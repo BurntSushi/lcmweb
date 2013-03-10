@@ -1,0 +1,11 @@
+{{ define "error" }}
+{{ template "header" . }}
+
+<h2>Error</h2>
+
+<p>Our apologies, but you've encountered an error in the system:</p>
+
+<p>{{ .Message }}</p>
+
+{{ template "footer" . }}
+{{ end }}
