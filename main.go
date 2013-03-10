@@ -42,21 +42,6 @@ func init() {
 	}
 
 	db = connect(conf.MySQL)
-
-	tables, err := db.Query("SHOW DATABASES")
-	if err != nil {
-		log.Fatal(err)
-	}
-	for tables.Next() {
-		var dbName string
-		if err := tables.Scan(&dbName); err != nil {
-			log.Fatal(err)
-		}
-		log.Println(dbName)
-	}
-	if err := tables.Err(); err != nil {
-		log.Fatal(err)
-	}
 }
 
 func main() {

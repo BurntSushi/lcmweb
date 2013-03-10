@@ -15,7 +15,7 @@ type lcmDB struct {
 }
 
 func connect(conf configMysql) *lcmDB {
-	conns := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8",
+	conns := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&autocommit=false",
 		conf.User, conf.Password, conf.Host, conf.Port, conf.Database)
 
 	mysqlDB, err := sql.Open("mysql", conns)
@@ -26,7 +26,8 @@ func connect(conf configMysql) *lcmDB {
 
 	db := &lcmDB{mysqlDB}
 	db.migrate()
-	log.Println(db.version())
+
+	log.Printf("Database version: %d (API: %d)", db.version(), apiVersion)
 	return db
 }
 
@@ -34,7 +35,7 @@ func connect(conf configMysql) *lcmDB {
 // then version 0 is returned.
 func (db *lcmDB) version() int {
 	var ver int
-	r := db.QueryRow("SELECT name, value FROM meta WHERE name = ?", "version")
+	r := db.QueryRow("SELECT value FROM meta WHERE name = ?", "version")
 	if err := r.Scan(&ver); err != nil {
 		return 0
 	}
@@ -50,6 +51,33 @@ func (db *lcmDB) migrate() {
 	if version == 0 && !db.isEmpty() {
 		log.Fatal("Database corrupted. Expected it to be empty but it's not.")
 	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatalf("Could not start DB transaction: %s", err)
+	}
+	for i := version; i < apiVersion; i++ {
+		if err := migrations[i](tx); err != nil {
+			if err2 := tx.Rollback(); err2 != nil {
+				log.Fatalf(
+					"When migrating from %d to %d, got error '%s' and "+
+						"got error '%s' after trying to rollback.",
+					i, i+1, err, err2)
+			}
+			log.Println(db.Close())
+			log.Fatalf(
+				"Tried migrating from %d to %d, got an error and successfully "+
+					"rolled back: %s", i, i+1, err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		log.Fatalf("Tried commiting migration from %d to %d, but errored: %s",
+			version, apiVersion, err)
+	}
+	if newVersion := db.version(); newVersion != apiVersion {
+		log.Fatalf("After successfully migrating, expected version number %d "+
+			"but got %d.", apiVersion, newVersion)
+	}
 }
 
 // isEmpty determines if the database is empty by returning true if and only
@@ -63,6 +91,7 @@ func (db *lcmDB) isEmpty() bool {
 		log.Printf("SHOW TABLES: %s", err)
 		return false
 	}
+	defer rows.Close()
 
 	count := 0
 	for rows.Next() {
