@@ -21,9 +21,12 @@ func newHandler(h handler) http.HandlerFunc {
 		c := &controller{w, req, mux.Vars(req)}
 		defer func() {
 			if r := recover(); r != nil {
-				if err, ok := r.(error); ok {
+				switch err := r.(type) {
+				case authError:
+					c.authenticate(err)
+				case error:
 					c.error(err)
-				} else {
+				default:
 					panic(r)
 				}
 			}
@@ -40,7 +43,7 @@ func (c *controller) static() {
 }
 
 func (c *controller) index() {
-	panic(e("wat"))
+	panic(authError{})
 	c.render("index", nil)
 }
 
@@ -54,9 +57,13 @@ func (c *controller) render(name string, data interface{}) {
 	}
 }
 
+func (c *controller) authenticate(msg error) {
+	c.render("login", m{"Message": msg.Error()})
+}
+
 func (c *controller) error(msg error) {
 	log.Printf("ERROR: %s", msg)
-	err := views.ExecuteTemplate(c.w, "error", m{"Message": msg})
+	err := views.ExecuteTemplate(c.w, "error", m{"Message": msg.Error()})
 	if err != nil {
 		// Something is seriously wrong.
 		log.Fatal(err)

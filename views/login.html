@@ -1,0 +1,11 @@
+{{ define "login" }}
+{{ template "header" . }}
+
+<h2>Please login</h2>
+
+{{ if .Message }}
+  <p>{{ .Message }}</p>
+{{ end }}
+
+{{ template "footer" . }}
+{{ end }}

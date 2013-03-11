@@ -20,6 +20,7 @@ var (
 	cwd   string
 	conf  config
 	db    *lcmDB
+	store *dbStore
 )
 
 var e = fmt.Errorf
@@ -41,7 +42,8 @@ func init() {
 		log.Fatalf("Error loading config.toml: %s", err)
 	}
 
-	db = connect(conf.MySQL)
+	db = connect(conf.PgSQL)
+	store = newDBStore(db.DB)
 }
 
 func main() {

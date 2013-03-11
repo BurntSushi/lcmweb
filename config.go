@@ -1,12 +1,12 @@
 package main
 
 type config struct {
-	MySQL  configMysql
+	PgSQL  configPgsql
 	Users  map[string]configUser
 	Scores map[string]configScoringScheme
 }
 
-type configMysql struct {
+type configPgsql struct {
 	User, Password, Host, Database string
 	Port                           int
 }
