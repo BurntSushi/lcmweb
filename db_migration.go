@@ -95,11 +95,12 @@ func migrate0to1(tx *sql.Tx) {
 
 	mustExec(tx, `
 		CREATE TABLE session (
-			sessionid char (64) NOT NULL,
+			sessionid bytea NOT NULL,
 			userid smallint NOT NULL,
+			session_name varchar (255) NOT NULL,
 			key varchar (255) NOT NULL,
 			value varchar (1000) NOT NULL,
-			PRIMARY KEY (sessionid, userid, key)
+			PRIMARY KEY (sessionid, userid, session_name, key)
 		)
 	`)
 }

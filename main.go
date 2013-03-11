@@ -48,10 +48,15 @@ func init() {
 
 func main() {
 	r := mux.NewRouter()
-	r.HandleFunc("/", newHandler((*controller).index))
-	r.PathPrefix("/static").HandlerFunc(newHandler((*controller).static))
+	r.HandleFunc("/",
+		authHandler((*controller).index))
+	r.HandleFunc("/favicon.ico",
+		http.NotFound)
+	r.PathPrefix("/static").
+		HandlerFunc(noAuthHandler((*controller).static))
 
-	r.HandleFunc("/{location}", newHandler((*controller).notFound))
+	r.HandleFunc("/{location}",
+		authHandler((*controller).notFound))
 
 	http.Handle("/", r)
 	if err := http.ListenAndServe(":8082", nil); err != nil {

@@ -6,31 +6,61 @@ import (
 	"path"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 type controller struct {
-	w      http.ResponseWriter
-	req    *http.Request
-	params map[string]string
+	w       http.ResponseWriter
+	req     *http.Request
+	params  map[string]string
+	session *sessions.Session
 }
 
 type handler func(*controller)
 
-func newHandler(h handler) http.HandlerFunc {
+func authHandler(h handler) http.HandlerFunc {
+	return newHandler(h, true)
+}
+
+func noAuthHandler(h handler) http.HandlerFunc {
+	return newHandler(h, false)
+}
+
+func newHandler(h handler, sessions bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		c := &controller{w, req, mux.Vars(req)}
+		c := &controller{
+			w:      w,
+			req:    req,
+			params: mux.Vars(req),
+		}
 		defer func() {
 			if r := recover(); r != nil {
-				switch err := r.(type) {
+				switch e := r.(type) {
 				case authError:
-					c.authenticate(err)
+					c.authenticate(e)
 				case error:
-					c.error(err)
+					c.error(e)
 				default:
 					panic(r)
 				}
 			}
 		}()
+
+		if sessions {
+			var err error
+			sessid, userid, ok := store.getValidSession(c.req)
+			log.Println(len(sessid), userid)
+			if !ok {
+				if err = store.InitClient(c.req, c.w, 1); err != nil {
+					panic(err)
+				}
+			}
+
+			c.session, err = store.New(c.req, sessionName)
+			if err != nil {
+				panic(err)
+			}
+		}
 		h(c)
 	}
 }
@@ -43,7 +73,6 @@ func (c *controller) static() {
 }
 
 func (c *controller) index() {
-	panic(authError{})
 	c.render("index", nil)
 }
 
