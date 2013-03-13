@@ -5,49 +5,25 @@
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
 	<meta charset="utf-8">
-	<title>Andrew Gallant's Blog {{if .Title}} :: {{.Title}} {{end}}</title>
+	<title>Linguistic Category Model</title>
 	<meta name="description"
-				content="Andrew Gallant's blog. I blog mostly about my own programming
-								 projects.">
-	<meta name="viewport" content="width=device-width">
+        content="A web application to apply the Linguistic Category Model to documents.">
 
 	<link rel="stylesheet" href="/static/css/normalize.css">
 	<link rel="stylesheet" href="/static/css/style.css">
 	<link rel="stylesheet" href="/static/css/print.css">
-  <!-- <link rel="stylesheet" href="/static/css/highlight/dark.css"> -->
-  <link rel="stylesheet" href="/static/css/highlight/github.css">
 
-	<script type="text/javascript" src="/static/js/highlight.pack.js"></script>
-	<script type="text/javascript">
-		hljs.initHighlightingOnLoad();
-	</script>
-  <script type="text/javascript" src="/static/js/captcha.js"></script>
-
-  <script type="text/javascript">
-
-    var _gaq = _gaq || [];
-    _gaq.push(['_setAccount', 'UA-5095052-2']);
-    _gaq.push(['_trackPageview']);
-
-    (function() {
-      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-    })();
-
-  </script>
+  <script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
+  {{ range .js }}
+    <script src="/static/js/{{ . }}.js"></script>
+  {{ end }}
 </head>
 <body>
-	<div id="container"><div id="container2">
-	<header>
-		<h1>Andrew Gallant's Blog</h1>
-		<ul>
-			<li><a href="/">Blog Home</a></li>
-			<li><a href="/about">About</a></li>
-			<li><a href="/archives">Archives</a></li>
-			<li><a href="http://burntsushi.net">Homepage</a></li>
-		</ul>
-		<hr>
-	</header>
-	<div id="content" role="main">
+  {{ if .User }}
+    <div id="user_content">
+      <p>USER CONTENT</p>
+  {{ else }}
+    <div id="guest_content">
+      <p>GUEST CONTENT</p>
+  {{ end }}
 {{ end }}

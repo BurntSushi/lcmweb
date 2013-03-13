@@ -7,5 +7,19 @@
   <p>{{ .Message }}</p>
 {{ end }}
 
+<form method="post" action="/login">
+  <div class="form_input">
+    <label for="email">E-mail:</label>
+    <input type="text" name="Email" value="{{ .PrefillEmail }}" />
+  </div>
+
+  <div class="form_input">
+    <label for="password">Password:</label>
+    <input type="password" name="Password" value="" />
+  </div>
+
+  <input type="submit" value="Login" />
+</form>
+
 {{ template "footer" . }}
 {{ end }}

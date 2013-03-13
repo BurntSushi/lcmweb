@@ -1,5 +1,5 @@
 install:
-	go install
+	go install ./...
 
 gofmt:
 	gofmt -w *.go

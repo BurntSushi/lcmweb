@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"path"
@@ -14,25 +15,55 @@ type controller struct {
 	req     *http.Request
 	params  map[string]string
 	session *sessions.Session
+	user    configUser
+}
+
+func newController(w http.ResponseWriter, req *http.Request) *controller {
+	return &controller{
+		w:      w,
+		req:    req,
+		params: mux.Vars(req),
+	}
 }
 
 type handler func(*controller)
 
-func authHandler(h handler) http.HandlerFunc {
-	return newHandler(h, true)
+func auth(h handler) handler {
+	return func(c *controller) {
+		c.auth(h)
+	}
 }
 
-func noAuthHandler(h handler) http.HandlerFunc {
-	return newHandler(h, false)
+func (c *controller) auth(h handler) {
+	c.loadSession()
+	h(c)
 }
 
-func newHandler(h handler, sessions bool) http.HandlerFunc {
+func (c *controller) loadSession() {
+	var err error
+	_, userid, _ := store.getValidSession(c.req)
+	// if !ok {
+	// if err = store.InitClient(c.req, c.w, "andrew"); err != nil {
+	// panic(err)
+	// }
+	// }
+
+	c.session, err = store.New(c.req, sessionName)
+	if err != nil {
+		panic(err)
+	}
+
+	// If we're here, then we've been authenticated.
+	if user, ok := conf.Users[userid]; ok {
+		c.user = user
+	} else {
+		panic(fmt.Errorf("Could not find user with ID %s.", userid))
+	}
+}
+
+func htmlHandler(h handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		c := &controller{
-			w:      w,
-			req:    req,
-			params: mux.Vars(req),
-		}
+		c := newController(w, req)
 		defer func() {
 			if r := recover(); r != nil {
 				switch e := r.(type) {
@@ -45,27 +76,16 @@ func newHandler(h handler, sessions bool) http.HandlerFunc {
 				}
 			}
 		}()
-
-		if sessions {
-			var err error
-			sessid, userid, ok := store.getValidSession(c.req)
-			log.Println(len(sessid), userid)
-			if !ok {
-				if err = store.InitClient(c.req, c.w, 1); err != nil {
-					panic(err)
-				}
-			}
-
-			c.session, err = store.New(c.req, sessionName)
-			if err != nil {
-				panic(err)
-			}
-		}
 		h(c)
 	}
 }
 
 type m map[string]interface{}
+
+func (c *controller) decode(v interface{}) {
+	assert(c.req.ParseForm())
+	assert(schemaDec.Decode(v, c.req.PostForm))
+}
 
 func (c *controller) static() {
 	fileServer := http.FileServer(http.Dir(path.Join(cwd, "static")))
@@ -76,25 +96,16 @@ func (c *controller) index() {
 	c.render("index", nil)
 }
 
-func (c *controller) notFound() {
-	c.render("404", m{"Location": c.params["location"]})
-}
-
 func (c *controller) render(name string, data interface{}) {
+	if c.user.valid() {
+		if data == nil {
+			data = m{"User": c.user}
+		} else if m, ok := data.(map[string]interface{}); ok {
+			m["User"] = c.user
+			log.Println("wat", m["User"])
+		}
+	}
 	if err := views.ExecuteTemplate(c.w, name, data); err != nil {
 		c.error(err)
-	}
-}
-
-func (c *controller) authenticate(msg error) {
-	c.render("login", m{"Message": msg.Error()})
-}
-
-func (c *controller) error(msg error) {
-	log.Printf("ERROR: %s", msg)
-	err := views.ExecuteTemplate(c.w, "error", m{"Message": msg.Error()})
-	if err != nil {
-		// Something is seriously wrong.
-		log.Fatal(err)
 	}
 }

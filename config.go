@@ -1,9 +1,11 @@
 package main
 
 type config struct {
-	PgSQL  configPgsql
-	Users  map[string]configUser
-	Scores map[string]configScoringScheme
+	PgSQL    configPgsql
+	Email    configEmail
+	Security configSecurity
+	Users    map[string]configUser
+	Scores   map[string]configScoringScheme
 }
 
 type configPgsql struct {
@@ -11,8 +13,27 @@ type configPgsql struct {
 	Port                           int
 }
 
+type configEmail struct {
+	FromEmail string `toml:"from_email"`
+	FromName  string `toml:"from_name"`
+	SMTP      configSmtp
+}
+
+type configSmtp struct {
+	Username string
+	Password string
+	Server   string
+	Port     int
+}
+
+type configSecurity struct {
+	HashKey  string `toml:"hash_key"`
+	BlockKey string `toml:"block_key"`
+}
+
 type configUser struct {
-	Id    int
+	No    int
+	Id    string
 	Name  string
 	Email string
 	Admin bool

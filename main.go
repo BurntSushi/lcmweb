@@ -1,29 +1,30 @@
 package main
 
 import (
-	"fmt"
 	"go/build"
 	thtml "html/template"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 
 	"github.com/BurntSushi/toml"
 )
 
 var (
-	pkg   = path.Join("github.com", "BurntSushi", "lcmweb")
-	views *thtml.Template
-	cwd   string
-	conf  config
-	db    *lcmDB
-	store *dbStore
+	pkg       = path.Join("github.com", "BurntSushi", "lcmweb")
+	views     *thtml.Template
+	cwd       string
+	conf      config
+	db        *lcmDB
+	store     *dbStore
+	schemaDec *schema.Decoder
+	router    *mux.Router
 )
-
-var e = fmt.Errorf
 
 func init() {
 	var err error
@@ -42,21 +43,40 @@ func init() {
 		log.Fatalf("Error loading config.toml: %s", err)
 	}
 
+	initSecureCookie(conf.Security)
 	db = connect(conf.PgSQL)
 	store = newDBStore(db.DB)
+	schemaDec = schema.NewDecoder()
 }
 
 func main() {
-	r := mux.NewRouter()
+	router = mux.NewRouter()
+
+	r := router
 	r.HandleFunc("/",
-		authHandler((*controller).index))
+		htmlHandler(auth((*controller).index)))
 	r.HandleFunc("/favicon.ico",
 		http.NotFound)
 	r.PathPrefix("/static").
-		HandlerFunc(noAuthHandler((*controller).static))
+		HandlerFunc(htmlHandler((*controller).static))
 
-	r.HandleFunc("/{location}",
-		authHandler((*controller).notFound))
+	r.HandleFunc("/login",
+		htmlHandler((*controller).postLogin)).Methods("POST")
+	r.HandleFunc("/newpassword/{userid}",
+		htmlHandler((*controller).newPassword)).
+		Name("newpassword")
+	r.HandleFunc("/newpassword-json",
+		jsonHandler((*controller).newPasswordJson))
+	r.HandleFunc("/newpassword-send",
+		jsonHandler((*controller).newPasswordSend)).Methods("POST")
+
+	// Catch-alls for pages that don't match a route.
+	r.HandleFunc("/{a}",
+		htmlHandler(auth((*controller).notFound)))
+	r.HandleFunc("/{a}/",
+		htmlHandler(auth((*controller).notFound)))
+	r.HandleFunc("/{a}/{b}",
+		htmlHandler(auth((*controller).notFound)))
 
 	http.Handle("/", r)
 	if err := http.ListenAndServe(":8082", nil); err != nil {
@@ -67,4 +87,17 @@ func main() {
 func readable(fpath string) bool {
 	_, err := os.Stat(fpath)
 	return err == nil || !os.IsNotExist(err)
+}
+
+func (c *controller) mkUrl(name string, pairs ...string) *url.URL {
+	u, err := router.Get(name).URL(pairs...)
+	assert(err)
+	u.Host = c.req.Host
+	return u
+}
+
+func (c *controller) mkHttpUrl(name string, pairs ...string) *url.URL {
+	u := c.mkUrl(name, pairs...)
+	u.Scheme = "http"
+	return u
 }

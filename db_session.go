@@ -2,10 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
+	"encoding/base64"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/securecookie"
@@ -21,18 +20,18 @@ const (
 
 var scookie *securecookie.SecureCookie
 
-func init() {
-	hashKey := securecookie.GenerateRandomKey(64)
-	blockKey := securecookie.GenerateRandomKey(32)
+func initSecureCookie(conf configSecurity) {
+	decode64 := func(name, s string) []byte {
+		dec := base64.StdEncoding
+		bs, err := dec.DecodeString(s)
+		if err != nil {
+			log.Fatal("Could not decode %s key: %s", name, err)
+		}
+		return bs
+	}
+	hashKey := decode64("hash", conf.HashKey)
+	blockKey := decode64("block", conf.BlockKey)
 	scookie = securecookie.New(hashKey, blockKey)
-}
-
-type authError struct {
-	msg string
-}
-
-func (ae authError) Error() string {
-	return ae.msg
 }
 
 type dbStore struct {
@@ -47,13 +46,13 @@ func newDBStore(db *sql.DB) *dbStore {
 // InitClient must be called on a client after they have been authorized.
 // It will set the appropriate cookies needed to track the user's session.
 func (s *dbStore) InitClient(
-	r *http.Request, w http.ResponseWriter, userId int) error {
+	r *http.Request, w http.ResponseWriter, userId string) error {
 
 	var err error
 
 	sessionId := string(securecookie.GenerateRandomKey(64))
 	s.writeCookie(r, w, sessionIdCookieName, sessionId)
-	s.writeCookie(r, w, userIdCookieName, fmt.Sprintf("%d", userId))
+	s.writeCookie(r, w, userIdCookieName, userId)
 
 	// Now we must create a session with at least one key in the database.
 	// The idea here is that a session ID in a cookie is only valid if it
@@ -184,13 +183,13 @@ func (s *dbStore) Save(
 // It returns true if the user's session is valid by checking
 // that the session data in the database matches the session data in the
 // user's cookie. Returns false if there is any mismatch.
-func (s *dbStore) getValidSession(r *http.Request) (string, int, bool) {
+func (s *dbStore) getValidSession(r *http.Request) (string, string, bool) {
 	sessid := s.sessionId(r)
 	userid := s.userId(r)
 
 	// If either are empty, then the user isn't authorized.
-	if len(sessid) == 0 || userid == 0 {
-		return "", 0, false
+	if len(sessid) == 0 || len(userid) == 0 {
+		return "", "", false
 	}
 
 	// Now make sure that at least the void session exists.
@@ -205,9 +204,8 @@ func (s *dbStore) getValidSession(r *http.Request) (string, int, bool) {
 	`, sessid, userid, sessionName)
 	if err := row.Scan(&count); err != nil {
 		log.Printf("[hasValidSession]: %s", err)
-		return "", 0, false
+		return "", "", false
 	}
-	log.Println(count)
 	return sessid, userid, count >= 1
 }
 
@@ -217,18 +215,8 @@ func (s *dbStore) sessionId(r *http.Request) string {
 }
 
 // userId gets the value of the user ID cookie.
-func (s *dbStore) userId(r *http.Request) int {
-	a := s.readCookie(r, userIdCookieName)
-	if len(a) == 0 {
-		return 0
-	}
-
-	i, err := strconv.Atoi(a)
-	if err != nil {
-		log.Printf("Could not decode integer in userid cookie: %s", a)
-		return 0
-	}
-	return i
+func (s *dbStore) userId(r *http.Request) string {
+	return s.readCookie(r, userIdCookieName)
 }
 
 // Returns an empty string if the cookie doesn't exist or if there was
