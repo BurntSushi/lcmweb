@@ -2,14 +2,12 @@ package main
 
 import (
 	"crypto/rand"
-	"log"
 	"math/big"
-	"time"
 )
 
 const cookieKeyName = "lcmweb_new-pass-key"
 
-type formSecurity struct {
+type formNewPass struct {
 	UserId          string
 	Key             string
 	Password        string
@@ -26,37 +24,22 @@ func (c *controller) newPassword() {
 		setSecurityKey(c, user, true)
 	}
 
-	var form formSecurity
-	c.decode(&form)
-
-	data := m{
+	c.render("new-password", m{
 		"js":         []string{"new-password"},
 		"NoAuthUser": user,
-	}
-
-	// Form is only submitted when there's a password.
-	if len(form.Password) > 0 {
-		log.Println("Who who?")
-		data["Message"] = "WATWAT"
-	}
-
-	// Make sure security key is valid (again).
-	// Check password. Just look at length and whether they are equal.
-	// Once everything is good, add a row to the `password` table and
-	// redirect to the login page.
-
-	c.render("new-password", data)
+	})
 }
 
-func (c *controller) newPasswordJson() {
-	var form formSecurity
+func (c *controller) newPasswordSave() {
+	var form formNewPass
 	c.decode(&form)
-	_ = findResettableUser(form.UserId)
+	user := findResettableUser(form.UserId)
 
 	// If there's no cookie key, then something has gone wrong.
 	cookieKey := store.readCookie(c.req, cookieKeyName)
 	if len(cookieKey) == 0 {
-		panic(e("Could not determine your security code. Please try again."))
+		panic(e("Could not determine your security code. " +
+			"Try re-sending the email."))
 	}
 
 	// Nothing matching is a user problem.
@@ -65,6 +48,23 @@ func (c *controller) newPasswordJson() {
 			"key sent in the email. Please try entering it again."))
 	}
 
+	if len(form.Password) < 8 {
+		panic(jsonf("Passwords must contain at least 8 characters."))
+	}
+	if form.Password != form.PasswordConfirm {
+		panic(jsonf("Passwords do not match."))
+	}
+
+	// Okay, user's data has been validated. Save the new password for the
+	// user.
+	hi := newHashInfo(form.Password)
+	mustExec(db, `
+		INSERT INTO password
+			(userno, password, salt1, salt2)
+		VALUES
+			($1, $2, $3, $4)
+	`, user.No, hi.password, hi.salt1, hi.salt2)
+
 	c.json(nil)
 }
 
@@ -72,13 +72,14 @@ func (c *controller) newPasswordJson() {
 // and sends an email to the user containing the security code.
 //
 func (c *controller) newPasswordSend() {
-	var form formSecurity
+	var form formNewPass
 	c.decode(&form)
 	user := findResettableUser(form.UserId)
 
 	// Wait to complete, since this is an asynchronous request already.
 	setSecurityKey(c, user, false)
 
+	// blank success
 	c.json(nil)
 }
 
@@ -91,16 +92,14 @@ func (c *controller) newPasswordSend() {
 func setSecurityKey(c *controller, user configUser, async bool) {
 	newKey := genKey()
 	store.writeCookie(c.req, c.w, cookieKeyName, newKey)
-	log.Println(newKey)
 
-	email := func() {
-		time.Sleep(2 * time.Second)
-		log.Println("Email sent!")
+	email := func() error {
+		return user.email("security key", "Security key: "+newKey)
 	}
 	if async {
 		go email()
 	} else {
-		email()
+		assert(email())
 	}
 }
 

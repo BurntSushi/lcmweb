@@ -65,8 +65,8 @@ func main() {
 	r.HandleFunc("/newpassword/{userid}",
 		htmlHandler((*controller).newPassword)).
 		Name("newpassword")
-	r.HandleFunc("/newpassword-json",
-		jsonHandler((*controller).newPasswordJson))
+	r.HandleFunc("/newpassword-save",
+		jsonHandler((*controller).newPasswordSave)).Methods("POST")
 	r.HandleFunc("/newpassword-send",
 		jsonHandler((*controller).newPasswordSend)).Methods("POST")
 

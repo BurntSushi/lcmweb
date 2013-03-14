@@ -87,6 +87,11 @@ func (c *controller) decode(v interface{}) {
 	assert(schemaDec.Decode(v, c.req.PostForm))
 }
 
+func (c *controller) decodeMultipart(formVals interface{}) {
+	assert(c.req.ParseMultipartForm(10737418240))
+	assert(schemaDec.Decode(formVals, c.req.MultipartForm.Value))
+}
+
 func (c *controller) static() {
 	fileServer := http.FileServer(http.Dir(path.Join(cwd, "static")))
 	http.StripPrefix("/static", fileServer).ServeHTTP(c.w, c.req)

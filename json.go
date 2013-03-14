@@ -30,6 +30,7 @@ func jsonHandler(h handler) http.HandlerFunc {
 				case jsonFail:
 					c.jsonFail(e)
 				case error:
+					log.Printf("ERROR: %s", e)
 					c.jsonRender(m{
 						"status":  "error",
 						"message": formatMessage(e.Error()),

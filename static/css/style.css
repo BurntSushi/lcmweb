@@ -16,13 +16,17 @@ a:hover {
   color: #AB8043;
 }
 
+.hide {
+  display: none;
+}
+
 .success {
   font-weight: bold;
   color: #0b0;
 }
 
-.hide {
-  display: none;
+.pending {
+  font-weight: bold;
 }
 
 .herror, .error {
