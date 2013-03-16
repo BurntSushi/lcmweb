@@ -13,15 +13,21 @@ import (
 type formLogin struct {
 	Email    string
 	Password string
+	BackTo   string
 }
 
 func (c *controller) authenticate(msg error) {
 	var form formLogin
 	c.decode(&form)
 
+	if len(form.BackTo) == 0 {
+		form.BackTo = c.req.URL.String()
+	}
+
 	c.render("login", m{
 		"Message":      formatMessage(msg.Error()),
 		"PrefillEmail": form.Email,
+		"BackTo":       form.BackTo,
 	})
 }
 
@@ -36,16 +42,19 @@ func (c *controller) postLogin() {
 
 	// If the user doesn't have a password in the database, then they need
 	// to set a password.
+	newPassUrl := c.mkUrl("newpassword", "userid", user.Id)
 	hi, ok := user.getHashInfo()
 	if !ok {
-		next := c.mkUrl("newpassword", "userid", user.Id)
-		http.Redirect(c.w, c.req, next.String(), 302)
-		return
+		panic(ae("Account has no password. Please [set a new password]"+
+			"(%s).", newPassUrl))
 	}
 
-	user.authenticate(hi, form.Password)
+	if hi.password != hi.hashGivenPassword(form.Password) {
+		panic(ae("Invalid password."))
+	}
+	assert(store.InitSession(c.req, c.w, user.Id))
 
-	c.render("login", m{"Message": "WAT: " + form.Password})
+	http.Redirect(c.w, c.req, form.BackTo, 302)
 }
 
 func findUserByEmail(email string) configUser {
@@ -78,26 +87,28 @@ func (u configUser) getHashInfo() (hashInfo, bool) {
 	return hashInfo{password, salt1, salt2}, true
 }
 
-func (u configUser) authenticate(hi hashInfo, givenPassword string) {
-}
-
 type hashInfo struct {
 	password, salt1, salt2 string
 }
 
 func newHashInfo(password string) hashInfo {
-	passh := sha512.New()
 	salth1 := sha512.New()
 	salth2 := sha512.New()
 
-	io.WriteString(passh, password)
 	salth1.Write(securecookie.GenerateRandomKey(64))
 	salth2.Write(securecookie.GenerateRandomKey(64))
 
+	xsalth1 := fmt.Sprintf("%x", salth1.Sum(nil))
+	xsalth2 := fmt.Sprintf("%x", salth2.Sum(nil))
+
+	passh := sha512.New()
+	io.WriteString(passh, xsalth1)
+	io.WriteString(passh, password)
+	io.WriteString(passh, xsalth2)
+
 	return hashInfo{
 		fmt.Sprintf("%x", passh.Sum(nil)),
-		fmt.Sprintf("%x", salth1.Sum(nil)),
-		fmt.Sprintf("%x", salth2.Sum(nil)),
+		xsalth1, xsalth2,
 	}
 }
 

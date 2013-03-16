@@ -1,20 +1,18 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"path"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/sessions"
 )
 
 type controller struct {
 	w       http.ResponseWriter
 	req     *http.Request
 	params  map[string]string
-	session *sessions.Session
+	session *session
 	user    configUser
 }
 
@@ -40,25 +38,21 @@ func (c *controller) auth(h handler) {
 }
 
 func (c *controller) loadSession() {
-	var err error
-	_, userid, _ := store.getValidSession(c.req)
+	// _, userid, _ := store.getValidSession(c.req)
 	// if !ok {
 	// if err = store.InitClient(c.req, c.w, "andrew"); err != nil {
 	// panic(err)
 	// }
 	// }
 
-	c.session, err = store.New(c.req, sessionName)
+	sess, err := store.New(c.req, sessionName)
 	if err != nil {
 		panic(err)
 	}
+	c.session = &session{sess}
 
 	// If we're here, then we've been authenticated.
-	if user, ok := conf.Users[userid]; ok {
-		c.user = user
-	} else {
-		panic(fmt.Errorf("Could not find user with ID %s.", userid))
-	}
+	c.user = findUser(c.session.Get(sessionUserId))
 }
 
 func htmlHandler(h handler) http.HandlerFunc {
@@ -99,6 +93,10 @@ func (c *controller) static() {
 
 func (c *controller) index() {
 	c.render("index", nil)
+}
+
+func (c *controller) testing() {
+	c.render("test", nil)
 }
 
 func (c *controller) render(name string, data interface{}) {

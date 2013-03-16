@@ -6,6 +6,10 @@ import (
 	"net/smtp"
 )
 
+type lcmUser struct {
+	configUser
+}
+
 func findUser(userid string) configUser {
 	if len(userid) == 0 {
 		panic(e("No user specified."))
@@ -18,6 +22,14 @@ func findUser(userid string) configUser {
 
 func (user configUser) valid() bool {
 	return user.No > 0
+}
+
+func (user configUser) lock() {
+	locker.lock(user.Id)
+}
+
+func (user configUser) unlock() {
+	locker.unlock(user.Id)
 }
 
 func (user configUser) email(subject, message string) error {

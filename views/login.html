@@ -4,10 +4,12 @@
 <h2>Please login</h2>
 
 {{ if .Message }}
-  <p>{{ .Message }}</p>
+  <p class="error">{{ .Message }}</p>
 {{ end }}
 
 <form method="post" action="/login">
+  <input type="hidden" name="BackTo" value="{{ .BackTo }}" />
+
   <div class="form_input">
     <label for="email">E-mail:</label>
     <input type="text" name="Email" value="{{ .PrefillEmail }}" />

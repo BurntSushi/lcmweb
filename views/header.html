@@ -22,7 +22,7 @@
 <body>
   {{ if .User }}
     <div id="user_content">
-      <p>USER CONTENT</p>
+      <p>USER: {{ .User.Name }}</p>
   {{ else }}
     <div id="guest_content">
       <p>GUEST CONTENT</p>

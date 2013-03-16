@@ -18,7 +18,7 @@ func (c *controller) newPassword() {
 	user := findResettableUser(c.params["userid"])
 
 	// If there's no cookie key set, then let's add one.
-	cookieKey := store.readCookie(c.req, cookieKeyName)
+	cookieKey := readCookie(c.req, cookieKeyName)
 	if len(cookieKey) == 0 {
 		// Don't wait for the email to finish sending.
 		setSecurityKey(c, user, true)
@@ -36,7 +36,7 @@ func (c *controller) newPasswordSave() {
 	user := findResettableUser(form.UserId)
 
 	// If there's no cookie key, then something has gone wrong.
-	cookieKey := store.readCookie(c.req, cookieKeyName)
+	cookieKey := readCookie(c.req, cookieKeyName)
 	if len(cookieKey) == 0 {
 		panic(e("Could not determine your security code. " +
 			"Try re-sending the email."))
@@ -91,7 +91,7 @@ func (c *controller) newPasswordSend() {
 // its own goroutine.
 func setSecurityKey(c *controller, user configUser, async bool) {
 	newKey := genKey()
-	store.writeCookie(c.req, c.w, cookieKeyName, newKey)
+	writeCookie(c.req, c.w, cookieKeyName, newKey)
 
 	email := func() error {
 		return user.email("security key", "Security key: "+newKey)

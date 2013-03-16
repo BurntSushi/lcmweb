@@ -70,6 +70,9 @@ func main() {
 	r.HandleFunc("/newpassword-send",
 		jsonHandler((*controller).newPasswordSend)).Methods("POST")
 
+	r.HandleFunc("/test",
+		htmlHandler(auth((*controller).testing))).Name("test")
+
 	// Catch-alls for pages that don't match a route.
 	r.HandleFunc("/{a}",
 		htmlHandler(auth((*controller).notFound)))
@@ -92,12 +95,12 @@ func readable(fpath string) bool {
 func (c *controller) mkUrl(name string, pairs ...string) *url.URL {
 	u, err := router.Get(name).URL(pairs...)
 	assert(err)
-	u.Host = c.req.Host
 	return u
 }
 
 func (c *controller) mkHttpUrl(name string, pairs ...string) *url.URL {
 	u := c.mkUrl(name, pairs...)
+	u.Host = c.req.Host
 	u.Scheme = "http"
 	return u
 }

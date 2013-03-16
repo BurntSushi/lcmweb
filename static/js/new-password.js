@@ -68,6 +68,7 @@ $(document).ready(function() {
         }
         form_hide_error();
         console.log(r);
+        window.location.replace('/');
     });
 
     $resend.find('a').click(function() {
