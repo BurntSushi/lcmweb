@@ -28,3 +28,16 @@
       <p>GUEST CONTENT</p>
   {{ end }}
 {{ end }}
+
+
+{{ define "footer" }}
+  </div>
+
+  {{ if .User }}
+    <div id="user_nav">
+      NAV
+    </div>
+  {{ end }}
+</body>
+</html>
+{{ end }}
