@@ -22,10 +22,8 @@
 <body>
   {{ if .User }}
     <div id="user_content">
-      <p>USER: {{ .User.Name }}</p>
   {{ else }}
     <div id="guest_content">
-      <p>GUEST CONTENT</p>
   {{ end }}
 {{ end }}
 
@@ -34,9 +32,14 @@
   </div>
 
   {{ if .User }}
-    <div id="user_nav">
-      NAV
-    </div>
+    <div id="user_nav"><div>
+      <a href="#">Link 1</a>
+      &raquo; <a href="#">Link 2</a>
+      &raquo; <a href="#">Link 3</a>
+    </div></div>
+    <div id="user_panel"><div>
+      {{ join ", " (split " " "Andrew Richard Gallant") }} Panel
+    </div></div>
   {{ end }}
 </body>
 </html>

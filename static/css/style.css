@@ -1,10 +1,31 @@
+/*
+ * Pandora:
+ * #091d42
+ * #396a92
+ * #9ab4cb
+ * #ecedf2
+ * #fdfdfd
+ */
+
+
 html {
   height: 100%;
+  background: #fdfdfd;
 }
 
 body {
   background: #fff
   height: 100%;
+  font-family: serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: serif;
+  margin: 20px 0 5px 0;
+}
+
+p {
+  margin: 0 0 7px 0;
 }
 
 a, a:visited {
@@ -37,3 +58,46 @@ a:hover {
 .herror {
   display: none;
 }
+
+#user_content {
+  margin: 0 0 0 200px;
+  position: relative;
+  top: 40px;
+}
+
+#user_nav {
+  background: #de662c;
+  color: #fdfdfd;
+  border-bottom: 1px solid #888;
+  position: fixed;
+  top: 0;
+  height: 40px;
+  width: 100%;
+}
+
+  #user_nav div {
+    margin: 8px 0 0 8px;
+  }
+
+  #user_nav a, #user_panel a {
+    color: #fdfdfd;
+  }
+
+  #user_nav a:hover, #user_panel a:hover {
+    color: #000;
+  }
+
+
+#user_panel {
+  background: #396a92;
+  color: #fdfdfd;
+  position: fixed;
+  top: 41px;
+  width: 170px;
+  height: 100%;
+  border-right: 1px solid #888;
+}
+
+  #user_panel div {
+    margin: 10px;
+  }

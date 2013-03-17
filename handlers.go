@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"path"
 
@@ -96,16 +95,15 @@ func (c *controller) index() {
 }
 
 func (c *controller) testing() {
-	c.render("test", nil)
+	c.render("test", m{"Title": "Testing 1 2 3"})
 }
 
 func (c *controller) render(name string, data interface{}) {
 	if c.user.valid() {
 		if data == nil {
 			data = m{"User": c.user}
-		} else if m, ok := data.(map[string]interface{}); ok {
+		} else if m, ok := data.(m); ok {
 			m["User"] = c.user
-			log.Println("wat", m["User"])
 		}
 	}
 	if err := views.ExecuteTemplate(c.w, name, data); err != nil {

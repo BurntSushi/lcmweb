@@ -2,7 +2,7 @@ package main
 
 import (
 	"go/build"
-	thtml "html/template"
+	html "html/template"
 	"log"
 	"net/http"
 	"net/url"
@@ -17,7 +17,7 @@ import (
 
 var (
 	pkg       = path.Join("github.com", "BurntSushi", "lcmweb")
-	views     *thtml.Template
+	views     *html.Template
 	cwd       string
 	conf      config
 	db        *lcmDB
@@ -36,7 +36,8 @@ func init() {
 		}
 	}
 
-	views = thtml.Must(thtml.ParseGlob(path.Join(cwd, "views", "*.html")))
+	views = html.New("views").Funcs(templateHelpers)
+	views = html.Must(views.ParseGlob(path.Join(cwd, "views", "*.html")))
 
 	confFile := path.Join(cwd, "config.toml")
 	if _, err = toml.DecodeFile(confFile, &conf); err != nil {
