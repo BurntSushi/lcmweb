@@ -16,6 +16,14 @@ type formLogin struct {
 	BackTo   string
 }
 
+func (c *controller) logout() {
+	if !c.user.valid() {
+		panic(e("No user logged in."))
+	}
+	store.wipe(store.sessionId(c.req))
+	http.Redirect(c.w, c.req, "/", 302)
+}
+
 func (c *controller) authenticate(msg error) {
 	var form formLogin
 	c.decode(&form)

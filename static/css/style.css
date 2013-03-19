@@ -16,11 +16,10 @@ html {
 body {
   background: #fff
   height: 100%;
-  font-family: serif;
+  font-family: sans-serif;
 }
 
 h1, h2, h3, h4 {
-  font-family: serif;
   margin: 20px 0 5px 0;
 }
 
@@ -79,6 +78,15 @@ a:hover {
     margin: 8px 0 0 8px;
   }
 
+  #user_nav #nav {
+    float: left;
+  }
+
+  #user_nav #misc {
+    float: right;
+    margin-right: 8px;
+  }
+
   #user_nav a, #user_panel a {
     color: #fdfdfd;
   }
@@ -100,4 +108,21 @@ a:hover {
 
   #user_panel div {
     margin: 10px;
+  }
+
+#flash_error {
+  display: none;
+  background: #ffffcc;
+  border: 2px solid #888;
+  padding: 8px;
+  position: fixed;
+  top: 50px;
+  left: 200px;
+  width: 500px;
+}
+
+  #flash_error h4 {
+    margin: 0 0 10px 0;
+    font-size: 115%;
+    color: #b00;
   }

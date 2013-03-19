@@ -8,7 +8,9 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const apiVersion = 1
+const (
+	apiVersion = 1
+)
 
 type lcmDB struct {
 	*sql.DB

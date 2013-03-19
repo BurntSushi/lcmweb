@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
@@ -44,6 +45,17 @@ func init() {
 		log.Fatalf("Error loading config.toml: %s", err)
 	}
 
+	conf.Options.sessionTimeout, err = time.ParseDuration(
+		conf.Options.SessionTimeout)
+	if err != nil {
+		log.Fatalf("Could not parse `session_timeout` '%s' as a duration: %s",
+			conf.Options.SessionTimeout, err)
+	}
+
+	if conf.Options.sessionTimeout < time.Minute {
+		log.Fatalf("Session timeout must be at least 1 minute.")
+	}
+
 	initSecureCookie(conf.Security)
 	db = connect(conf.PgSQL)
 	store = newDBStore(db.DB)
@@ -51,6 +63,14 @@ func init() {
 }
 
 func main() {
+	// Remove stale sessions periodically.
+	go func() {
+		ticker := time.Tick(time.Minute)
+		for _ = range ticker {
+			store.deleteStale(conf.Options.sessionTimeout)
+		}
+	}()
+
 	router = mux.NewRouter()
 
 	r := router
@@ -70,7 +90,11 @@ func main() {
 		jsonHandler((*controller).newPasswordSave)).Methods("POST")
 	r.HandleFunc("/newpassword-send",
 		jsonHandler((*controller).newPasswordSend)).Methods("POST")
+	r.HandleFunc("/logout",
+		htmlHandler(auth((*controller).logout)))
 
+	r.HandleFunc("/noop",
+		jsonHandler(auth((*controller).noop))).Name("noop")
 	r.HandleFunc("/test",
 		htmlHandler(auth((*controller).testing))).Name("test")
 
@@ -81,9 +105,15 @@ func main() {
 		htmlHandler(auth((*controller).notFound)))
 	r.HandleFunc("/{a}/{b}",
 		htmlHandler(auth((*controller).notFound)))
+	r.HandleFunc("/{a}/{b}/",
+		htmlHandler(auth((*controller).notFound)))
 
-	http.Handle("/", r)
-	if err := http.ListenAndServe(":8082", nil); err != nil {
+	srv := &http.Server{
+		Addr:        ":8082",
+		Handler:     r,
+		ReadTimeout: 15 * time.Second,
+	}
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("ListenAndServe: %s", err)
 	}
 }

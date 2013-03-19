@@ -1,8 +1,13 @@
 package main
 
+import (
+	"time"
+)
+
 type config struct {
 	PgSQL    configPgsql
 	Email    configEmail
+	Options  configOptions
 	Security configSecurity
 	Users    map[string]configUser
 	Scores   map[string]configScoringScheme
@@ -24,6 +29,11 @@ type configSmtp struct {
 	Password string
 	Server   string
 	Port     int
+}
+
+type configOptions struct {
+	SessionTimeout string `toml:"session_timeout"`
+	sessionTimeout time.Duration
 }
 
 type configSecurity struct {

@@ -40,6 +40,7 @@ func jsonHandler(h handler) http.HandlerFunc {
 				}
 			}
 		}()
+
 		h(c)
 	}
 }

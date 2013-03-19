@@ -14,8 +14,8 @@ import (
 const (
 	sessionIdCookieName = "lcmweb_sessionid"
 	sessionName         = "void" // we only use one
-	sessionLastUpdated  = "__userid"
-	sessionUserId       = "__lastupdated"
+	sessionLastUpdated  = "__lastupdated"
+	sessionUserId       = "__userid"
 )
 
 var scookie *securecookie.SecureCookie
@@ -94,6 +94,8 @@ func (s *dbStore) New(r *http.Request, name string) (*sessions.Session, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
+
 	for rows.Next() {
 		var key, value string
 		if err := rows.Scan(&key, &value); err != nil {
@@ -120,29 +122,40 @@ func (s *dbStore) Save(r *http.Request, w http.ResponseWriter,
 
 	sess.Values[sessionLastUpdated] = time.Now().UTC()
 
-	_, err = s.Exec(`
-		DELETE FROM session WHERE sessionid = $1
-	`, sessid)
+	tx, err := s.Begin()
 	if err != nil {
 		return err
 	}
 
-	prep, err := s.Prepare(`
+	_, err = tx.Exec(`
+		DELETE FROM session WHERE sessionid = $1
+	`, sessid)
+	if err != nil {
+		assert(tx.Rollback())
+		return err
+	}
+
+	prep, err := tx.Prepare(`
 		INSERT INTO session
 			(sessionid, session_name, key, value)
 		VALUES
 			($1, $2, $3, $4)
 	`)
+	defer prep.Close()
+
 	if err != nil {
+		assert(tx.Rollback())
 		return err
 	}
 	for k, v := range sess.Values {
 		_, err = prep.Exec(sessid, sess.Name(), k, v)
 		if err != nil {
+			assert(tx.Rollback())
 			return err
 		}
 	}
-	return nil
+
+	return tx.Commit()
 }
 
 // getValidSession returns the session and user ids of the current HTTP
@@ -167,7 +180,7 @@ func (s *dbStore) getValidSession(r *http.Request) (string, bool) {
 			sessionid = $1 AND session_name = $2
 	`, sessid, sessionName)
 	if err := row.Scan(&count); err != nil {
-		log.Printf("[hasValidSession]: %s", err)
+		log.Printf("[getValidSession]: %s", err)
 		return "", false
 	}
 	return sessid, count >= 1
@@ -176,6 +189,81 @@ func (s *dbStore) getValidSession(r *http.Request) (string, bool) {
 // sessionId gets the value of the session ID cookie.
 func (s *dbStore) sessionId(r *http.Request) string {
 	return readCookie(r, sessionIdCookieName)
+}
+
+// wipe will delete all information in the DB attached to the session ID.
+// We don't bother with deleting the cookie, since this automatically
+// invalidates the user session.
+func (s *dbStore) wipe(sessid string) {
+	mustExec(db, `
+		DELETE FROM
+			session
+		WHERE
+			sessionid = $1
+	`, sessid)
+}
+
+// deleteStale removes rows from the session table that haven't been updated
+// in the duration specified.
+func (s *dbStore) deleteStale(timeout time.Duration) {
+	// A session itself has no concept of when it was last updated. Instead,
+	// we maintain this information as a special session key, which is stored
+	// as a normal string.
+	//
+	// In the future, we may want to make "last updated" part of a session to
+	// make this operation faster.
+
+	locker.lock("deleteStale")
+	defer locker.unlock("deleteStale")
+
+	rows, err := db.Query(`
+		SELECT
+			sessionid, value
+		FROM
+			session
+		WHERE
+			key = $1
+	`, sessionLastUpdated)
+	if err != nil {
+		log.Printf("[deleteStale.query] %s", err)
+		return
+	}
+	defer rows.Close()
+
+	cutoff := time.Now().UTC().Add(-timeout)
+	for rows.Next() {
+		var sessid, last string
+		if err := rows.Scan(&sessid, &last); err != nil {
+			log.Printf("[deleteStale.scan] %s", err)
+			return
+		}
+
+		lastUpdated, err := time.Parse(time.RFC3339Nano, last)
+		if err != nil {
+			log.Printf("[deleteStale.time] time '%s': %s", last, err)
+			return
+		}
+
+		if lastUpdated.Before(cutoff) {
+			log.Printf("Deleting session '%s' which is before '%s'. Now: '%s'.",
+				lastUpdated, cutoff, time.Now().UTC())
+
+			_, err = db.Exec(`
+				DELETE FROM
+					session
+				WHERE
+					sessionid = $1
+			`, sessid)
+			if err != nil {
+				log.Printf("[deleteStale.delete] %s", err)
+				return
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("[deleteStale.end] %s", err)
+		return
+	}
 }
 
 // session wraps gorilla.sessions.Session and makes accessing values in the

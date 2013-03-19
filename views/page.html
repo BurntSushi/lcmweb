@@ -15,8 +15,14 @@
 
   <script src="http://code.jquery.com/jquery-1.9.0.min.js"></script>
   <script src="/static/js/jquery.form.js"></script>
+
+  <script src="/static/js/util.js"></script>
+
   {{ range .js }}
     <script src="/static/js/{{ . }}.js"></script>
+  {{ end }}
+  {{ if .User }}
+    <script src="/static/js/session-ping.js"></script>
   {{ end }}
 </head>
 <body>
@@ -32,14 +38,32 @@
   </div>
 
   {{ if .User }}
-    <div id="user_nav"><div>
-      <a href="#">Link 1</a>
-      &raquo; <a href="#">Link 2</a>
-      &raquo; <a href="#">Link 3</a>
-    </div></div>
+    <div id="user_nav">
+      <div id="nav">
+        <a href="#">Link 1</a>
+        &raquo; <a href="#">Link 2</a>
+        &raquo; <a href="#">Link 3</a>
+      </div>
+      <div id="misc">
+        <a href="/logout">Logout</a>
+      </div>
+    </div>
     <div id="user_panel"><div>
       {{ join ", " (split " " "Andrew Richard Gallant") }} Panel
     </div></div>
+
+    <div id="flash_error">
+      <h4>Error!</h4>
+      <div class="flash_message">
+        This is some error text.
+        This is some error text.
+        This is some error text.
+        This is some error text.
+        This is some error text.
+        This is some error text.
+      </div>
+      <p class="flash_dismiss"><a href="javascript:void(0);">Dismiss</a></p>
+    </div>
   {{ end }}
 </body>
 </html>

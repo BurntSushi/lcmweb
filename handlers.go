@@ -37,13 +37,6 @@ func (c *controller) auth(h handler) {
 }
 
 func (c *controller) loadSession() {
-	// _, userid, _ := store.getValidSession(c.req)
-	// if !ok {
-	// if err = store.InitClient(c.req, c.w, "andrew"); err != nil {
-	// panic(err)
-	// }
-	// }
-
 	sess, err := store.New(c.req, sessionName)
 	if err != nil {
 		panic(err)
@@ -52,6 +45,9 @@ func (c *controller) loadSession() {
 
 	// If we're here, then we've been authenticated.
 	c.user = findUser(c.session.Get(sessionUserId))
+
+	// Always update the session "last updated" time.
+	assert(c.session.Save(c.req, c.w))
 }
 
 func htmlHandler(h handler) http.HandlerFunc {
@@ -69,6 +65,7 @@ func htmlHandler(h handler) http.HandlerFunc {
 				}
 			}
 		}()
+
 		h(c)
 	}
 }
@@ -92,6 +89,10 @@ func (c *controller) static() {
 
 func (c *controller) index() {
 	c.render("index", nil)
+}
+
+func (c *controller) noop() {
+	c.json(nil)
 }
 
 func (c *controller) testing() {
