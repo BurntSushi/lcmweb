@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 	"path"
 
@@ -96,10 +97,32 @@ func (c *controller) noop() {
 }
 
 func (c *controller) testing() {
-	c.render("test", m{"Title": "Testing 1 2 3"})
+	data := m{
+		"Title": "Testing 1 2 3",
+		"Nav": c.mkNav(
+			nav{"Wat 1", "/wat1"},
+			nav{"Wat 2", "/wat2"},
+			nav{"Wat 3", "/wat3"},
+		),
+	}
+	c.render("test", data)
 }
 
 func (c *controller) render(name string, data interface{}) {
+	bs := c.renderBytes(name, data)
+	n, err := c.w.Write(bs)
+	assert(err)
+	if n != len(bs) {
+		panic(e("Expected to write %d bytes but only wrote %d bytes.",
+			len(bs), n))
+	}
+}
+
+func (c *controller) renderString(name string, data interface{}) string {
+	return string(c.renderBytes(name, data))
+}
+
+func (c *controller) renderBytes(name string, data interface{}) []byte {
 	if c.user.valid() {
 		if data == nil {
 			data = m{"User": c.user}
@@ -107,7 +130,8 @@ func (c *controller) render(name string, data interface{}) {
 			m["User"] = c.user
 		}
 	}
-	if err := views.ExecuteTemplate(c.w, name, data); err != nil {
-		c.error(err)
-	}
+
+	buf := new(bytes.Buffer)
+	assert(views.ExecuteTemplate(buf, name, data))
+	return buf.Bytes()
 }

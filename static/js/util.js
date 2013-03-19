@@ -7,6 +7,20 @@ function is_success(json_response) {
            && json_response.status == 'success';
 }
 
+function flash_success(html) {
+    $success = $('#flash_success');
+    if ($success.is(':visible')) {
+        return;
+    }
+
+    $success.find('.flash_message').html(html);
+    $success.fadeIn();
+    timeout = window.setTimeout(function() {
+        $success.fadeOut();
+    }, 5 * 1000);
+    $success('timeout', timeout);
+}
+
 function flash_error(html) {
     $error = $('#flash_error');
     if ($error.is(':visible')) {
@@ -87,7 +101,15 @@ function jajaxSubmit($form, data, success) {
 }
 
 $(document).ready(function() {
-    $('#flash_error .flash_dismiss a').click(function() {
+    $('#flash_error a.flash_dismiss').click(function() {
         $('#flash_error').fadeOut();
+    });
+    $('#flash_success a.flash_dismiss').click(function() {
+        $success = $('#flash_success');
+        timeout = $success.data('timeout');
+        if (timeout) {
+            window.clearTimeout(timeout);
+        }
+        $success.fadeOut();
     });
 });
