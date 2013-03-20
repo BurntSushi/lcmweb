@@ -47,6 +47,7 @@ type configUser struct {
 	Name  string
 	Email string
 	Admin bool
+	Group string
 }
 
 type configScoringScheme struct {

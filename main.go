@@ -74,8 +74,6 @@ func main() {
 	router = mux.NewRouter()
 
 	r := router
-	r.HandleFunc("/",
-		htmlHandler(auth((*controller).index)))
 	r.HandleFunc("/favicon.ico",
 		http.NotFound)
 	r.PathPrefix("/static").
@@ -92,6 +90,15 @@ func main() {
 		jsonHandler((*controller).newPasswordSend)).Methods("POST")
 	r.HandleFunc("/logout",
 		htmlHandler(auth((*controller).logout)))
+
+	r.HandleFunc("/",
+		htmlHandler(auth((*controller).projects))).Methods("GET")
+	r.HandleFunc("/projects",
+		htmlHandler(auth((*controller).projects))).Methods("GET").
+		Name("projects")
+	r.HandleFunc("/add-project",
+		jsonHandler(auth((*controller).addProject))).Methods("POST").
+		Name("add-project")
 
 	r.HandleFunc("/noop",
 		jsonHandler(auth((*controller).noop))).Name("noop")

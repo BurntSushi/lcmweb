@@ -111,6 +111,16 @@ func migrate0to1(tx *sql.Tx) {
 			salt2 varchar (1024) NOT NULL
 		)
 	`)
+
+	mustExec(tx, `
+		CREATE TABLE project (
+			name varchar (255) NOT NULL,
+			userno smallint NOT NULL,
+			display varchar (255) NOT NULL,
+			timeline timestamp without time zone,
+			PRIMARY KEY (name, userno)
+		)
+	`)
 }
 
 func updateVersion(tx *sql.Tx, newv int) error {

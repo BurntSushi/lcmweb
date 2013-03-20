@@ -1,0 +1,24 @@
+{{ define "projects" }}
+{{ template "header" . }}
+
+<h2>Your projects</h2>
+
+<p>Projects are just like folders. They serve as a way to organize your
+   documents.</p>
+
+<form id="add-project"
+      method="post"
+      action="/add-project">
+
+  <p id="form_error" class="error hide"></p>
+
+  <div class="form_input">
+    <label for="Name">Project name:</label>
+    <input type="text" id="Name" name="Name" value="" />
+  </div>
+
+  <input type="submit" value="Add project" />
+</form>
+
+{{ template "footer" . }}
+{{ end }}
