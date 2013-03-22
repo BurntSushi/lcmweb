@@ -89,7 +89,7 @@ func (c *controller) newPasswordSend() {
 // Sending an email can take a while, so if this needs to be done in a
 // synchronous request, pass true to `async` and the email will be done in
 // its own goroutine.
-func setSecurityKey(c *controller, user configUser, async bool) {
+func setSecurityKey(c *controller, user *lcmUser, async bool) {
 	newKey := genKey()
 	writeCookie(c.req, c.w, cookieKeyName, newKey)
 
@@ -119,8 +119,8 @@ func genKey() string {
 	return string(asciis)
 }
 
-func findResettableUser(userid string) configUser {
-	user := findUser(userid)
+func findResettableUser(userid string) *lcmUser {
+	user := findUserById(userid)
 	if _, ok := user.getHashInfo(); ok {
 		panic(e("User **%s** already has a password. "+
 			"Please contact the administrator if you'd like to reset your "+

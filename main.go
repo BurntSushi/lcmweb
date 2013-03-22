@@ -12,8 +12,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
-
-	"github.com/BurntSushi/toml"
 )
 
 var (
@@ -28,8 +26,6 @@ var (
 )
 
 func init() {
-	var err error
-
 	for _, dir := range build.Default.SrcDirs() {
 		if readable(path.Join(dir, pkg)) {
 			cwd = path.Join(dir, pkg)
@@ -40,21 +36,7 @@ func init() {
 	views = html.New("views").Funcs(templateHelpers)
 	views = html.Must(views.ParseGlob(path.Join(cwd, "views", "*.html")))
 
-	confFile := path.Join(cwd, "config.toml")
-	if _, err = toml.DecodeFile(confFile, &conf); err != nil {
-		log.Fatalf("Error loading config.toml: %s", err)
-	}
-
-	conf.Options.sessionTimeout, err = time.ParseDuration(
-		conf.Options.SessionTimeout)
-	if err != nil {
-		log.Fatalf("Could not parse `session_timeout` '%s' as a duration: %s",
-			conf.Options.SessionTimeout, err)
-	}
-
-	if conf.Options.sessionTimeout < time.Minute {
-		log.Fatalf("Session timeout must be at least 1 minute.")
-	}
+	initConfig()
 
 	initSecureCookie(conf.Security)
 	db = connect(conf.PgSQL)
@@ -96,9 +78,22 @@ func main() {
 	r.HandleFunc("/projects",
 		htmlHandler(auth((*controller).projects))).Methods("GET").
 		Name("projects")
+	r.HandleFunc("/bit/myprojects",
+		htmlHandler(auth((*controller).bitMyProjects))).Methods("GET").
+		Name("bit-myprojects")
 	r.HandleFunc("/add-project",
 		jsonHandler(auth((*controller).addProject))).Methods("POST").
 		Name("add-project")
+	r.HandleFunc("/manage-collaborators",
+		jsonHandler(auth((*controller).manageCollaborators))).Methods("POST").
+		Name("manage-collaborators")
+	r.HandleFunc("/bit/{user}/{project}/collaborators",
+		htmlHandler(auth((*controller).bitCollaborators))).Methods("GET").
+		Name("bit-collaborators")
+
+	r.HandleFunc("/{user}/{project}",
+		htmlHandler(auth((*controller).documents))).Methods("GET").
+		Name("documents")
 
 	r.HandleFunc("/noop",
 		jsonHandler(auth((*controller).noop))).Name("noop")
@@ -130,14 +125,8 @@ func readable(fpath string) bool {
 	return err == nil || !os.IsNotExist(err)
 }
 
-func (c *controller) mkUrl(name string, pairs ...string) *url.URL {
-	u, err := router.Get(name).URL(pairs...)
-	assert(err)
-	return u
-}
-
 func (c *controller) mkHttpUrl(name string, pairs ...string) *url.URL {
-	u := c.mkUrl(name, pairs...)
+	u := mkUrl(name, pairs...)
 	u.Host = c.req.Host
 	u.Scheme = "http"
 	return u

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"path"
+	"strings"
 
 	"github.com/gorilla/mux"
 )
@@ -13,7 +14,7 @@ type controller struct {
 	req     *http.Request
 	params  map[string]string
 	session *session
-	user    configUser
+	user    *lcmUser
 }
 
 func newController(w http.ResponseWriter, req *http.Request) *controller {
@@ -45,7 +46,7 @@ func (c *controller) loadSession() {
 	c.session = &session{sess}
 
 	// If we're here, then we've been authenticated.
-	c.user = findUser(c.session.Get(sessionUserId))
+	c.user = findUserById(c.session.Get(sessionUserId))
 
 	// Always update the session "last updated" time.
 	assert(c.session.Save(c.req, c.w))
@@ -60,6 +61,9 @@ func htmlHandler(h handler) http.HandlerFunc {
 				case authError:
 					c.authenticate(e)
 				case error:
+					if strings.Contains(e.Error(), "nil pointer") {
+						panic(e)
+					}
 					c.error(e)
 				default:
 					panic(r)

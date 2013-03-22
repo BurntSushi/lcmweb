@@ -50,7 +50,7 @@ func (c *controller) postLogin() {
 
 	// If the user doesn't have a password in the database, then they need
 	// to set a password.
-	newPassUrl := c.mkUrl("newpassword", "userid", user.Id)
+	newPassUrl := mkUrl("newpassword", "userid", user.Id)
 	hi, ok := user.getHashInfo()
 	if !ok {
 		panic(ae("Account has no password. Please [set a new password]"+
@@ -65,16 +65,16 @@ func (c *controller) postLogin() {
 	http.Redirect(c.w, c.req, form.BackTo, 302)
 }
 
-func findUserByEmail(email string) configUser {
+func findUserByEmail(email string) *lcmUser {
 	for _, user := range conf.Users {
 		if email == user.Email {
-			return user
+			return newLcmUser(user)
 		}
 	}
-	return configUser{}
+	return nil
 }
 
-func (u configUser) getHashInfo() (hashInfo, bool) {
+func (u *lcmUser) getHashInfo() (hashInfo, bool) {
 	var password, salt1, salt2 string
 	row := db.QueryRow(`
 		SELECT

@@ -121,6 +121,18 @@ func migrate0to1(tx *sql.Tx) {
 			PRIMARY KEY (name, userno)
 		)
 	`)
+
+	mustExec(tx, `
+		CREATE TABLE collaborator (
+			project_name varchar (255) NOT NULL,
+			project_owner smallint NOT NULL,
+			userno smallint NOT NULL,
+			PRIMARY KEY (project_name, project_owner, userno),
+			FOREIGN KEY (project_name, project_owner)
+				REFERENCES project (name, userno)
+				ON DELETE RESTRICT
+		)
+	`)
 }
 
 func updateVersion(tx *sql.Tx, newv int) error {

@@ -1,0 +1,75 @@
+{{ define "bit-collaborators" }}
+  {{ . | stringify | commafy }}
+{{ end }}
+
+
+{{ define "bit-myprojects" }}
+
+<h2>Your projects</h2>
+
+{{ $User := .User }}
+
+{{ if not .MyProjects }}
+  <p>Projects are just like folders. They serve as a way to organize your
+     documents.</p>
+  <p><strong>You don't have any projects yet. Try adding one!</strong></p>
+{{ else }}
+  <ul class="project-list">
+  {{ range .MyProjects }}
+    {{ $Proj := . }}
+    {{ $url := url "documents" "user" $Proj.Owner.Id "project" $Proj.Name }}
+
+    <li>
+      <p><a href="{{ $url }}">{{ .Display }}</a></p>
+      <dl>
+        <dt>Created</dt>
+        <dd>{{ date $User $Proj.Added }}</dd>
+
+        <dt>Documents</dt>
+        <dd>{{ $Proj.NumDocuments }}</dd>
+
+        <dt>Collaborators</dt>
+        <dd class="manage-collaborators">
+          {{ if $User.Collaborators }}
+            <span class="collaborator-list">
+              {{ template "bit-collaborators" $Proj.Collaborators }}
+            </span>
+
+            <a href="#" class="manage-start">Manage</a>
+
+            <form class="manage-form hide" method="post"
+                  action="{{ url "manage-collaborators" }}">
+              <input type="hidden"
+                     name="ProjectName"
+                     value="{{ $Proj.Name }}" />
+
+              <ul>
+                {{ range $User.Collaborators }}
+                  <li>
+                    <label for="collab-{{ $Proj.Name }}-{{ .Id }}">
+                      <input type="checkbox"
+                             id="collab-{{ $Proj.Name }}-{{ .Id }}"
+                             name="Collaborators"
+                             value="{{ .Id }}"
+                             {{ if $Proj.IsCollaborator . }}
+                               checked="checked"
+                             {{ end }}
+                             />
+                      {{ . }}
+                    </label>
+                  </li>
+                {{ end }}
+              </ul>
+              <p><a href="#" class="manage-done">Done</a></p>
+            </form>
+          {{ else }}
+            None available
+          {{ end }}
+        </dd>
+      </dl>
+    </li>
+  {{ end }}
+  </ul>
+{{ end }}
+
+{{ end }}

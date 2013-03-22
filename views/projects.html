@@ -1,23 +1,30 @@
 {{ define "projects" }}
 {{ template "header" . }}
 
-<h2>Your projects</h2>
+<div id="my-projects">
+  {{ template "bit-myprojects" . }}
+</div>
 
-<p>Projects are just like folders. They serve as a way to organize your
-   documents.</p>
+<h3><a href="#" id="show-add-project">Add a new project</a></h3>
 
 <form id="add-project"
       method="post"
-      action="/add-project">
+      action="/add-project"
+      class="hide">
 
-  <p id="form_error" class="error hide"></p>
-
-  <div class="form_input">
-    <label for="Name">Project name:</label>
-    <input type="text" id="Name" name="Name" value="" />
+  <div id="form_error" class="hide">
+    <h4>Error!</h4>
+    <div class="form_error_message"></div>
   </div>
 
-  <input type="submit" value="Add project" />
+  <div class="form_input">
+    <label for="DisplayName">Project name:</label>
+    <input type="text" id="DisplayName" name="DisplayName" value="" />
+
+    <input type="submit" value="Add project" />
+    <input type="button" id="add-project-cancel" value="Cancel" />
+  </div>
+
 </form>
 
 {{ template "footer" . }}
