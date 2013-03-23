@@ -93,6 +93,12 @@ func initConfig() {
 		log.Fatalf("Session timeout must be at least 1 minute.")
 	}
 
+	// Set the ID of each user.
+	for id, user := range conf.Users {
+		user.Id = id
+		conf.Users[id] = user
+	}
+
 	// Now make sure we support each user's time zone.
 	for k, user := range conf.Users {
 		user.timeZone, err = time.LoadLocation(user.TimeZone)

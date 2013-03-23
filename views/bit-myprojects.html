@@ -30,7 +30,7 @@
 
         <dt>Collaborators</dt>
         <dd class="manage-collaborators">
-          {{ if $User.Collaborators }}
+          {{ if or $Proj.Collaborators $User.Collaborators }}
             <span class="collaborator-list">
               {{ template "bit-collaborators" $Proj.Collaborators }}
             </span>
