@@ -83,6 +83,9 @@ func (s *dbStore) New(r *http.Request, name string) (*sessions.Session, error) {
 	sess := sessions.NewSession(s, name)
 	sess.Values = make(map[interface{}]interface{})
 
+	locker.rlock(sessid)
+	defer locker.runlock(sessid)
+
 	rows, err := s.Query(`
 		SELECT
 			key, value

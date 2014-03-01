@@ -70,7 +70,6 @@ func (c *controller) newPasswordSave() {
 
 // sendEmail always sets a new cookie (overwriting an existing one)
 // and sends an email to the user containing the security code.
-//
 func (c *controller) newPasswordSend() {
 	var form formNewPass
 	c.decode(&form)
