@@ -7,13 +7,14 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/sessions"
 )
 
 type controller struct {
 	w       http.ResponseWriter
 	req     *http.Request
 	params  map[string]string
-	session *session
+	session *sessions.Session
 	user    *lcmUser
 }
 
@@ -34,19 +35,21 @@ func auth(h handler) handler {
 }
 
 func (c *controller) auth(h handler) {
-	c.loadSession()
+	// If we're here, then we've been authenticated.
+	userId := sessGet(c.session, sessionUserId)
+	if len(userId) == 0 {
+		panic(ae(""))
+	}
+	c.user = findUserById(userId)
 	h(c)
 }
 
 func (c *controller) loadSession() {
-	sess, err := store.New(c.req, sessionName)
+	sess, err := store.Get(c.req, sessionName)
 	if err != nil {
 		panic(err)
 	}
-	c.session = &session{sess}
-
-	// If we're here, then we've been authenticated.
-	c.user = findUserById(c.session.Get(sessionUserId))
+	c.session = sess
 
 	// Always update the session "last updated" time.
 	assert(c.session.Save(c.req, c.w))
@@ -71,6 +74,7 @@ func htmlHandler(h handler) http.HandlerFunc {
 			}
 		}()
 
+		c.loadSession()
 		h(c)
 	}
 }

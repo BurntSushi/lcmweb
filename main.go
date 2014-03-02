@@ -12,6 +12,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
+
+	"github.com/BurntSushi/sqlauth"
+	"github.com/BurntSushi/sqlsess"
 )
 
 var (
@@ -20,7 +23,8 @@ var (
 	cwd       string
 	conf      config
 	db        *lcmDB
-	store     *dbStore
+	store     *sqlsess.Store
+	uauth     *sqlauth.Store
 	schemaDec *schema.Decoder
 	router    *mux.Router
 )
@@ -38,10 +42,14 @@ func init() {
 
 	initConfig()
 
-	initSecureCookie(conf.Security)
 	db = connect(conf.PgSQL)
-	store = newDBStore(db.DB)
+	initSecureCookie(db, conf.Security)
 	schemaDec = schema.NewDecoder()
+
+	var err error
+	if uauth, err = sqlauth.Open(db.DB); err != nil {
+		log.Fatalf("Could not open authenticator: %s", err)
+	}
 }
 
 func main() {
@@ -49,7 +57,7 @@ func main() {
 	go func() {
 		ticker := time.Tick(time.Minute)
 		for _ = range ticker {
-			store.deleteStale(conf.Options.sessionTimeout)
+			store.Clean(conf.Options.sessionTimeout)
 		}
 	}()
 

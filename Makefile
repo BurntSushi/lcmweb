@@ -1,8 +1,8 @@
 install:
 	go install ./...
 
-gofmt:
-	gofmt -w *.go
+fmt:
+	gofmt -w *.go */*.go
 	colcheck *.go
 
 loc:

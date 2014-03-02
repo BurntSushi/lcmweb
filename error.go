@@ -1,20 +1,13 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	html "html/template"
 	"log"
 	"strings"
 
-	"github.com/knieriem/markdown"
+	"github.com/russross/blackfriday"
 )
-
-var markp *markdown.Parser
-
-func init() {
-	markp = markdown.NewParser(nil)
-}
 
 var e = fmt.Errorf
 
@@ -58,8 +51,5 @@ func formatMessage(s string) html.HTML {
 }
 
 func toMarkdown(s string) string {
-	src := strings.NewReader(s)
-	dst := new(bytes.Buffer)
-	markp.Markdown(src, markdown.ToHTML(dst))
-	return dst.String()
+	return string(blackfriday.MarkdownBasic([]byte(s)))
 }

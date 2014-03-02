@@ -41,6 +41,7 @@ func jsonHandler(h handler) http.HandlerFunc {
 			}
 		}()
 
+		c.loadSession()
 		h(c)
 	}
 }

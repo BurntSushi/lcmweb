@@ -2,11 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"regexp"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/BurntSushi/locker"
 )
 
 var (
@@ -50,21 +53,18 @@ func (c *controller) addProject() {
 }
 
 func (c *controller) manageCollaborators() {
-	// We need to do a delete followed by an insert, which means we need
-	// exclusion to prevent race conditions.
-	// XXX: Does something like this not exist in Postgres? I understand that
-	// there are elaborate locking mechanisms available, but there were so
-	// many to choose from that there was no obvious choice. Mutexes appear
-	// simpler, even if they aren't technically the right tool.
-	locker.lock(c.user.Id)
-	defer locker.unlock(c.user.Id)
-
 	var form struct {
 		ProjectName   string
 		Collaborators []string
 	}
 	c.decode(&form)
 	proj := c.getProject(c.user.Id, form.ProjectName)
+
+	// We need to do a delete followed by an insert, which means we need
+	// exclusion for this project to prevent race conditions.
+	lockKey := fmt.Sprintf("%s-%s", proj.Name, proj.Owner.Id)
+	locker.Lock(lockKey)
+	defer locker.Unlock(lockKey)
 
 	safeTransaction(db, func(tx *sql.Tx) {
 		mustExec(tx, `

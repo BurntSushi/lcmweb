@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+
+	"github.com/BurntSushi/locker"
 )
 
 type lcmUser struct {
@@ -43,11 +45,11 @@ func (user *lcmUser) valid() bool {
 }
 
 func (user *lcmUser) lock() {
-	locker.lock(user.Id)
+	locker.Lock(user.Id)
 }
 
 func (user *lcmUser) unlock() {
-	locker.unlock(user.Id)
+	locker.Unlock(user.Id)
 }
 
 func (user *lcmUser) email(subject, message string) error {

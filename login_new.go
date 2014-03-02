@@ -5,7 +5,7 @@ import (
 	"math/big"
 )
 
-const cookieKeyName = "lcmweb_new-pass-key"
+const sessionSecurityKey = "newpass-key"
 
 type formNewPass struct {
 	UserId          string
@@ -17,9 +17,9 @@ type formNewPass struct {
 func (c *controller) newPassword() {
 	user := findResettableUser(c.params["userid"])
 
-	// If there's no cookie key set, then let's add one.
-	cookieKey := readCookie(c.req, cookieKeyName)
-	if len(cookieKey) == 0 {
+	// If there's no security key set, then let's add one.
+	skey := sessGet(c.session, sessionSecurityKey)
+	if len(skey) == 0 {
 		// Don't wait for the email to finish sending.
 		setSecurityKey(c, user, true)
 	}
@@ -35,15 +35,15 @@ func (c *controller) newPasswordSave() {
 	c.decode(&form)
 	user := findResettableUser(form.UserId)
 
-	// If there's no cookie key, then something has gone wrong.
-	cookieKey := readCookie(c.req, cookieKeyName)
-	if len(cookieKey) == 0 {
+	// If there's no security key, then something has gone wrong.
+	skey := sessGet(c.session, sessionSecurityKey)
+	if len(skey) == 0 {
 		panic(e("Could not determine your security code. " +
 			"Try re-sending the email."))
 	}
 
 	// Nothing matching is a user problem.
-	if form.Key != cookieKey {
+	if form.Key != skey {
 		panic(jsonf("The security key entered does not match the " +
 			"key sent in the email. Please try entering it again."))
 	}
@@ -57,14 +57,13 @@ func (c *controller) newPasswordSave() {
 
 	// Okay, user's data has been validated. Save the new password for the
 	// user.
-	hi := newHashInfo(form.Password)
-	mustExec(db, `
-		INSERT INTO password
-			(userno, password, salt1, salt2)
-		VALUES
-			($1, $2, $3, $4)
-	`, user.No, hi.password, hi.salt1, hi.salt2)
+	if err := uauth.Set(user.Id, form.Password); err != nil {
+		panic(jsonf("Error setting password: %s", err))
+	}
 
+	// Clear the security key for good measure.
+	delete(c.session.Values, sessionSecurityKey)
+	assert(c.session.Save(c.req, c.w))
 	c.json(nil)
 }
 
@@ -90,7 +89,8 @@ func (c *controller) newPasswordSend() {
 // its own goroutine.
 func setSecurityKey(c *controller, user *lcmUser, async bool) {
 	newKey := genKey()
-	writeCookie(c.req, c.w, cookieKeyName, newKey)
+	c.session.Values[sessionSecurityKey] = newKey
+	assert(c.session.Save(c.req, c.w))
 
 	email := func() error {
 		return user.email("security key", "Security key: "+newKey)
@@ -120,7 +120,7 @@ func genKey() string {
 
 func findResettableUser(userid string) *lcmUser {
 	user := findUserById(userid)
-	if _, ok := user.getHashInfo(); ok {
+	if hash, err := uauth.Get(user.Id); err == nil && len(hash) > 0 {
 		panic(e("User **%s** already has a password. "+
 			"Please contact the administrator if you'd like to reset your "+
 			"password.", user.Id))
