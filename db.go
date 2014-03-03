@@ -65,7 +65,7 @@ const (
 	sessionUserId = "userid"
 )
 
-func initSecureCookie(db *lcmDB, conf configSecurity) {
+func newStore(db *lcmDB, conf configSecurity) *sqlsess.Store {
 	decode64 := func(name, s string) []byte {
 		dec := base64.StdEncoding
 		bs, err := dec.DecodeString(s)
@@ -78,11 +78,12 @@ func initSecureCookie(db *lcmDB, conf configSecurity) {
 	blockKey := decode64("block", conf.BlockKey)
 
 	var err error
-	store, err = sqlsess.Open(db.DB)
+	store, err := sqlsess.Open(db.DB)
 	if err != nil {
 		log.Fatalf("Could not open session storage: %s", err)
 	}
 	store.SetKeys(hashKey, blockKey)
+	return store
 }
 
 func sessGet(sess *sessions.Session, key string) string {

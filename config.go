@@ -72,7 +72,7 @@ type configScoreCategory struct {
 	Shortcut string
 }
 
-func initConfig() {
+func newConfig() (conf config) {
 	var err error
 
 	confFile := path.Join(cwd, "config.toml")

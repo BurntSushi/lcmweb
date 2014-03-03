@@ -14,71 +14,73 @@ type formNewPass struct {
 	PasswordConfirm string
 }
 
-func (c *controller) newPassword() {
-	user := findResettableUser(c.params["userid"])
+func newPassword(w *web) {
+	user := findResettableUser(w.params["userid"])
 
 	// If there's no security key set, then let's add one.
-	skey := sessGet(c.session, sessionSecurityKey)
+	skey := sessGet(w.s, sessionSecurityKey)
 	if len(skey) == 0 {
 		// Don't wait for the email to finish sending.
-		setSecurityKey(c, user, true)
+		setSecurityKey(w, user, true)
 	}
 
-	c.render("new-password", m{
+	w.ren.HTML(200, "new-password", m{
 		"js":         []string{"new-password"},
 		"NoAuthUser": user,
 	})
 }
 
-func (c *controller) newPasswordSave() {
+func newPasswordSave(w *web) {
+	defer wrapErrorsJson()
+
 	var form formNewPass
-	c.decode(&form)
+	w.dec(&form)
 	user := findResettableUser(form.UserId)
 
 	// If there's no security key, then something has gone wrong.
-	skey := sessGet(c.session, sessionSecurityKey)
+	skey := sessGet(w.s, sessionSecurityKey)
 	if len(skey) == 0 {
-		panic(e("Could not determine your security code. " +
+		panic(se("Could not determine your security code. " +
 			"Try re-sending the email."))
 	}
 
 	// Nothing matching is a user problem.
 	if form.Key != skey {
-		panic(jsonf("The security key entered does not match the " +
+		panic(ue("The security key entered does not match the " +
 			"key sent in the email. Please try entering it again."))
 	}
 
 	if len(form.Password) < 8 {
-		panic(jsonf("Passwords must contain at least 8 characters."))
+		panic(ue("Passwords must contain at least 8 characters."))
 	}
 	if form.Password != form.PasswordConfirm {
-		panic(jsonf("Passwords do not match."))
+		panic(ue("Passwords do not match."))
 	}
 
 	// Okay, user's data has been validated. Save the new password for the
 	// user.
 	if err := uauth.Set(user.Id, form.Password); err != nil {
-		panic(jsonf("Error setting password: %s", err))
+		panic(ue("Error setting password: %s", err))
 	}
 
 	// Clear the security key for good measure.
-	delete(c.session.Values, sessionSecurityKey)
-	assert(c.session.Save(c.req, c.w))
-	c.json(nil)
+	delete(w.s.Values, sessionSecurityKey)
+	assert(w.s.Save(w.r, w.w))
+	w.json(nil)
 }
 
 // sendEmail always sets a new cookie (overwriting an existing one)
 // and sends an email to the user containing the security code.
-func (c *controller) newPasswordSend() {
+func newPasswordSend(w *web) {
+	defer wrapErrorsJson()
+
 	var form formNewPass
-	c.decode(&form)
+	w.dec(&form)
 	user := findResettableUser(form.UserId)
 
 	// Wait to complete, since this is an asynchronous request already.
-	setSecurityKey(c, user, false)
-
-	// blank success
-	c.json(nil)
+	setSecurityKey(w, user, false)
+	w.json(nil)
 }
 
 // setSecurityKey sets an encrypted cookie with the security key and sends
@@ -87,10 +89,10 @@ func (c *controller) newPasswordSend() {
 // Sending an email can take a while, so if this needs to be done in a
 // synchronous request, pass true to `async` and the email will be done in
 // its own goroutine.
-func setSecurityKey(c *controller, user *lcmUser, async bool) {
+func setSecurityKey(w *web, user *lcmUser, async bool) {
 	newKey := genKey()
-	c.session.Values[sessionSecurityKey] = newKey
-	assert(c.session.Save(c.req, c.w))
+	w.s.Values[sessionSecurityKey] = newKey
+	assert(w.s.Save(w.r, w.w))
 
 	email := func() error {
 		return user.email("security key", "Security key: "+newKey)
@@ -121,7 +123,7 @@ func genKey() string {
 func findResettableUser(userid string) *lcmUser {
 	user := findUserById(userid)
 	if hash, err := uauth.Get(user.Id); err == nil && len(hash) > 0 {
-		panic(e("User **%s** already has a password. "+
+		panic(ue("User **%s** already has a password. "+
 			"Please contact the administrator if you'd like to reset your "+
 			"password.", user.Id))
 	}

@@ -1,58 +1,38 @@
 package main
 
 import (
-	"go/build"
-	html "html/template"
 	"log"
 	"net/http"
-	"net/url"
-	"os"
 	"path"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/gorilla/schema"
+	"github.com/codegangsta/martini"
 
 	"github.com/BurntSushi/sqlauth"
 	"github.com/BurntSushi/sqlsess"
 )
 
+type m map[string]interface{}
+
 var (
-	pkg       = path.Join("github.com", "BurntSushi", "lcmweb")
-	views     *html.Template
-	cwd       string
-	conf      config
-	db        *lcmDB
-	store     *sqlsess.Store
-	uauth     *sqlauth.Store
-	schemaDec *schema.Decoder
-	router    *mux.Router
+	pkg   = path.Join("github.com", "BurntSushi", "lcmweb")
+	cwd   string
+	conf  config
+	db    *lcmDB
+	store *sqlsess.Store
+	uauth *sqlauth.Store
 )
 
-func init() {
-	for _, dir := range build.Default.SrcDirs() {
-		if readable(path.Join(dir, pkg)) {
-			cwd = path.Join(dir, pkg)
-			break
-		}
-	}
-
-	views = html.New("views").Funcs(templateHelpers)
-	views = html.Must(views.ParseGlob(path.Join(cwd, "views", "*.html")))
-
-	initConfig()
-
-	db = connect(conf.PgSQL)
-	initSecureCookie(db, conf.Security)
-	schemaDec = schema.NewDecoder()
-
+func main() {
 	var err error
+
+	conf = newConfig()
+	db = connect(conf.PgSQL)
+	store = newStore(db, conf.Security)
 	if uauth, err = sqlauth.Open(db.DB); err != nil {
 		log.Fatalf("Could not open authenticator: %s", err)
 	}
-}
 
-func main() {
 	// Remove stale sessions periodically.
 	go func() {
 		ticker := time.Tick(time.Minute)
@@ -61,81 +41,37 @@ func main() {
 		}
 	}()
 
-	router = mux.NewRouter()
+	m := martini.Classic()
+	m.Use(martini.Static("static", martini.StaticOptions{
+		Prefix:      "/static",
+		SkipLogging: true,
+	}))
+	m.Use(postDecoder())
+	m.Use(postMultiDecoder())
+	m.Use(renderer())
+	m.Use(session(store, sessionName))
+	m.Use(errors())
 
-	r := router
-	r.HandleFunc("/favicon.ico",
-		http.NotFound)
-	r.PathPrefix("/static").
-		HandlerFunc(htmlHandler((*controller).static))
+	m.Any("/favicon.ico", http.NotFound)
 
-	r.HandleFunc("/login",
-		htmlHandler((*controller).postLogin)).Methods("POST")
-	r.HandleFunc("/newpassword/{userid}",
-		htmlHandler((*controller).newPassword)).
-		Name("newpassword")
-	r.HandleFunc("/newpassword-save",
-		jsonHandler((*controller).newPasswordSave)).Methods("POST")
-	r.HandleFunc("/newpassword-send",
-		jsonHandler((*controller).newPasswordSend)).Methods("POST")
-	r.HandleFunc("/logout",
-		htmlHandler(auth((*controller).logout)))
+	m.Post("/login", webGuest, postLogin)
+	m.Get("/newpassword/:userid", webGuest, newPassword).Name("newpassword")
+	m.Post("/newpassword-save", webGuest, newPasswordSave)
+	m.Post("/newpassword-send", webGuest, newPasswordSend)
 
-	r.HandleFunc("/",
-		htmlHandler(auth((*controller).projects))).Methods("GET")
-	r.HandleFunc("/projects",
-		htmlHandler(auth((*controller).projects))).Methods("GET").
-		Name("projects")
-	r.HandleFunc("/bit/myprojects",
-		htmlHandler(auth((*controller).bitMyProjects))).Methods("GET").
-		Name("bit-myprojects")
-	r.HandleFunc("/add-project",
-		jsonHandler(auth((*controller).addProject))).Methods("POST").
-		Name("add-project")
-	r.HandleFunc("/manage-collaborators",
-		jsonHandler(auth((*controller).manageCollaborators))).Methods("POST").
+	m.Get("/logout", webAuth, logout)
+	m.Post("/noop", webAuth, func(w *web) { w.json(nil) }).Name("noop")
+
+	m.Get("/", webAuth, projects)
+	m.Get("/projects", webAuth, projects).Name("projects")
+	m.Get("/bit/myprojects", webAuth, bitMyProjects).Name("bit-myprojects")
+	m.Post("/add-project", webAuth, addProject).Name("add-project")
+	m.Post("/manage-collaborators", webAuth, manageCollaborators).
 		Name("manage-collaborators")
-	r.HandleFunc("/bit/{user}/{project}/collaborators",
-		htmlHandler(auth((*controller).bitCollaborators))).Methods("GET").
+	m.Get("/bit/:user/:project/collaborators", webAuth, bitCollaborators).
 		Name("bit-collaborators")
 
-	r.HandleFunc("/{user}/{project}",
-		htmlHandler(auth((*controller).documents))).Methods("GET").
-		Name("documents")
+	m.Get("/:user/:project", webAuth, documents).Name("documents")
 
-	r.HandleFunc("/noop",
-		jsonHandler(auth((*controller).noop))).Name("noop")
-	r.HandleFunc("/test",
-		htmlHandler(auth((*controller).testing))).Name("test")
-
-	// Catch-alls for pages that don't match a route.
-	r.HandleFunc("/{a}",
-		htmlHandler(auth((*controller).notFound)))
-	r.HandleFunc("/{a}/",
-		htmlHandler(auth((*controller).notFound)))
-	r.HandleFunc("/{a}/{b}",
-		htmlHandler(auth((*controller).notFound)))
-	r.HandleFunc("/{a}/{b}/",
-		htmlHandler(auth((*controller).notFound)))
-
-	srv := &http.Server{
-		Addr:        ":8082",
-		Handler:     r,
-		ReadTimeout: 15 * time.Second,
-	}
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatalf("ListenAndServe: %s", err)
-	}
-}
-
-func readable(fpath string) bool {
-	_, err := os.Stat(fpath)
-	return err == nil || !os.IsNotExist(err)
-}
-
-func (c *controller) mkHttpUrl(name string, pairs ...string) *url.URL {
-	u := mkUrl(name, pairs...)
-	u.Host = c.req.Host
-	u.Scheme = "http"
-	return u
+	m.Run()
 }

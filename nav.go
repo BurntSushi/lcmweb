@@ -5,10 +5,11 @@ type nav struct {
 	Link string
 }
 
-func (c *controller) mkNav(navs ...nav) []string {
+func (w *web) mkNav(navs ...nav) []string {
 	strs := make([]string, len(navs))
 	for i, n := range navs {
-		strs[i] = c.renderString("bit_nav", n)
+		data := m{"NavItem": n}
+		strs[i] = string(w.renderBytes("bit_nav", data))
 	}
 	return strs
 }

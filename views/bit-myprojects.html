@@ -1,5 +1,5 @@
 {{ define "bit-collaborators" }}
-  {{ . | stringify | commafy }}
+  {{ .Collabs | stringify | commafy }}
 {{ end }}
 
 
@@ -32,7 +32,7 @@
         <dd class="manage-collaborators">
           {{ if or $Proj.Collaborators $User.Collaborators }}
             <span class="collaborator-list">
-              {{ template "bit-collaborators" $Proj.Collaborators }}
+      {{ template "bit-collaborators" combine "Collabs" $Proj.Collaborators }}
             </span>
 
             <a href="#" class="manage-start">Manage</a>

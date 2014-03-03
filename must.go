@@ -32,12 +32,6 @@ func mustScan(scanner multiScanner, dest ...interface{}) {
 	assert(scanner.Scan(dest...))
 }
 
-func assert(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
 type transactor interface {
 	Begin() (*sql.Tx, error)
 }

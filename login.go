@@ -2,6 +2,9 @@ package main
 
 import (
 	"net/http"
+
+	"github.com/codegangsta/martini"
+	"github.com/martini-contrib/render"
 )
 
 type formLogin struct {
@@ -10,32 +13,38 @@ type formLogin struct {
 	BackTo   string
 }
 
-func (c *controller) logout() {
-	if !c.user.valid() {
-		panic(e("No user logged in."))
+func logout(w *web) {
+	if !w.user.valid() {
+		panic(ue("No user logged in."))
 	}
-	store.Delete(c.session)
-	http.Redirect(c.w, c.req, "/", 302)
+	store.Delete(w.s)
+	http.Redirect(w.w, w.r, "/", 302)
 }
 
-func (c *controller) authenticate(msg error) {
+// We can't use *web here since this is called from within the middleware.
+// (The *web type isn't registered until the route is executed.)
+func authenticate(
+	msg error,
+	dec formDecoder,
+	ren render.Render,
+	req *http.Request,
+) {
 	var form formLogin
-	c.decode(&form)
+	dec(&form)
 
 	if len(form.BackTo) == 0 {
-		form.BackTo = c.req.URL.String()
+		form.BackTo = req.URL.String()
 	}
-
-	c.render("login", m{
+	ren.HTML(200, "login", m{
 		"Message":      formatMessage(msg.Error()),
 		"PrefillEmail": form.Email,
 		"BackTo":       form.BackTo,
 	})
 }
 
-func (c *controller) postLogin() {
+func postLogin(w *web, routes martini.Routes) {
 	var form formLogin
-	c.decode(&form)
+	w.dec(&form)
 
 	user := findUserByEmail(form.Email)
 	if !user.valid() {
@@ -44,7 +53,7 @@ func (c *controller) postLogin() {
 
 	// If the user doesn't have a password in the database, then they need
 	// to set a password.
-	newPassUrl := mkUrl("newpassword", "userid", user.Id)
+	newPassUrl := routes.URLFor("newpassword", "userid", user.Id)
 	_, err := uauth.Get(user.Id)
 	if err != nil {
 		panic(ae("Account has no password. Please [set a new password]"+
@@ -52,15 +61,13 @@ func (c *controller) postLogin() {
 	}
 
 	ok, err := uauth.Authenticate(user.Id, form.Password)
-	if err != nil {
-		panic(ae("Error checking password: %s", err))
-	} else if !ok {
+	if err != nil || !ok {
 		panic(ae("Invalid password."))
 	}
 
-	c.session.Values[sessionUserId] = user.Id
-	assert(c.session.Save(c.req, c.w))
-	http.Redirect(c.w, c.req, form.BackTo, 302)
+	w.s.Values[sessionUserId] = user.Id
+	assert(w.s.Save(w.r, w.w))
+	http.Redirect(w.w, w.r, form.BackTo, 302)
 }
 
 func findUserByEmail(email string) *lcmUser {

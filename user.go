@@ -18,12 +18,12 @@ func newLcmUser(confUser configUser) *lcmUser {
 
 func findUserById(userid string) *lcmUser {
 	if len(userid) == 0 {
-		panic(e("No user specified."))
+		panic(ue("No user specified."))
 	}
 	if user, ok := conf.Users[userid]; ok {
 		return newLcmUser(user)
 	}
-	panic(e("Could not find user with id **%s**.", userid))
+	panic(ue("Could not find user with id **%s**.", userid))
 }
 
 // findUserByNo finds a user by a given user number. We don't panic here

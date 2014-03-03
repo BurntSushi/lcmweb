@@ -1,5 +1,5 @@
 package main
 
-func (c *controller) documents() {
-	panic(e("WAT"))
+func documents(w *web, user *lcmUser) {
+	panic(se("WAT"))
 }

@@ -16,32 +16,34 @@ var (
 	reProjectName = regexp.MustCompile("^[-a-zA-Z0-9_ ]+$")
 )
 
-func (c *controller) projects() {
+func projects(w *web) {
 	data := m{
 		"js":    []string{"project"},
 		"Title": "Projects",
-		"Nav": c.mkNav(
+		"Nav": w.mkNav(
 			nav{"Projects", "/projects"},
 		),
-		"MyProjects": c.user.projects(),
+		"MyProjects": w.user.projects(),
 	}
-	c.render("projects", data)
+	w.html("projects", data)
 }
 
-func (c *controller) bitMyProjects() {
-	c.render("bit-myprojects", m{
-		"MyProjects": c.user.projects(),
+func bitMyProjects(w *web) {
+	w.html("bit-myprojects", m{
+		"MyProjects": w.user.projects(),
 	})
 }
 
-func (c *controller) addProject() {
+func addProject(w *web) {
+	defer wrapErrorsJson()
+
 	var form struct {
 		DisplayName string
 	}
-	c.decode(&form)
+	w.dec(&form)
 
 	proj := project{
-		Owner:   c.user,
+		Owner:   w.user,
 		Name:    projDisplayToName(form.DisplayName),
 		Display: form.DisplayName,
 		Added:   time.Now().UTC(),
@@ -49,16 +51,16 @@ func (c *controller) addProject() {
 	proj.validate()
 	proj.add()
 
-	c.json(htmlEscape(proj.Display))
+	w.json(htmlEscape(proj.Display))
 }
 
-func (c *controller) manageCollaborators() {
+func manageCollaborators(w *web) {
 	var form struct {
 		ProjectName   string
 		Collaborators []string
 	}
-	c.decode(&form)
-	proj := c.getProject(c.user.Id, form.ProjectName)
+	w.dec(&form)
+	proj := getProject(w.user, w.user.Id, form.ProjectName)
 
 	// We need to do a delete followed by an insert, which means we need
 	// exclusion for this project to prevent race conditions.
@@ -84,12 +86,12 @@ func (c *controller) manageCollaborators() {
 		}
 	})
 
-	c.json(c.req.PostForm)
+	w.json(w.r.PostForm)
 }
 
-func (c *controller) bitCollaborators() {
-	proj := c.getProject(c.params["user"], c.params["project"])
-	c.render("bit-collaborators", proj.Collaborators())
+func bitCollaborators(w *web) {
+	proj := getProject(w.user, w.params["user"], w.params["project"])
+	w.html("bit-collaborators", m{"Collabs": proj.Collaborators()})
 }
 
 type project struct {
@@ -102,7 +104,7 @@ type project struct {
 
 // getProject finds a project given its primary key in the context of a
 // request. Namely, it makes sure that the viewer has access to the project.
-func (c *controller) getProject(projOwner, projName string) *project {
+func getProject(user *lcmUser, projOwner, projName string) *project {
 	owner := findUserById(projOwner)
 	proj := &project{Owner: owner}
 
@@ -118,21 +120,21 @@ func (c *controller) getProject(projOwner, projName string) *project {
 
 	// If the owner of the project is the current user, then permission
 	// is self evident.
-	if c.user.No == owner.No {
+	if user.No == owner.No {
 		return proj
 	}
 
 	// Now the only way the viewing user has permission is if the user is
 	// a collaborator on the project.
 	for _, collab := range proj.Collaborators() {
-		if c.user.No == collab.No {
+		if user.No == collab.No {
 			return proj
 		}
 	}
 
 	// No permission!
-	panic(e("User '%s' does not have permission to see this project.",
-		c.user.Id))
+	panic(ue("User '%s' does not have permission to see this project.",
+		user.Id))
 }
 
 // projDisplayToName converts a project display name (seen by the user) to a
@@ -162,18 +164,20 @@ func (proj *project) add() {
 // validate will check to make sure a new project is valid and can be inserted
 // into the DB.
 func (proj *project) validate() {
+	defer wrapErrorsJson()
+
 	if len(proj.Name) < 1 {
-		panic(jsonf("Projects names must be at least one character."))
+		panic(ue("Projects names must be at least one character."))
 	}
 	if len(proj.Name) >= 100 {
-		panic(jsonf("Project names must be fewer than 100 characters."))
+		panic(ue("Project names must be fewer than 100 characters."))
 	}
 	if !reProjectName.MatchString(proj.Name) {
-		panic(jsonf("Project names can only contain letters, numbers, " +
+		panic(ue("Project names can only contain letters, numbers, " +
 			"spaces, underscores and dashes."))
 	}
 	if proj.isDuplicate() {
-		panic(jsonf("A project named **%s** already exists.", proj.Display))
+		panic(ue("A project named **%s** already exists.", proj.Display))
 	}
 }
 

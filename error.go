@@ -3,40 +3,69 @@ package main
 import (
 	"fmt"
 	html "html/template"
-	"log"
 	"strings"
 
 	"github.com/russross/blackfriday"
 )
 
-var e = fmt.Errorf
+var ef = fmt.Errorf
 
-type authError struct {
-	msg string
-}
-
-func ae(format string, v ...interface{}) authError {
-	return authError{fmt.Sprintf(format, v...)}
-}
-
-func (ae authError) Error() string {
-	return ae.msg
-}
-
-func (c *controller) error(msg error) {
-	log.Printf("ERROR: %s", msg)
-
-	data := m{"Message": formatMessage(msg.Error())}
-	err := views.ExecuteTemplate(c.w, "error", data)
+func assert(err error) {
 	if err != nil {
-		// Something is seriously wrong.
-		log.Fatal(err)
+		panic(err)
 	}
 }
 
-func (c *controller) notFound() {
-	c.w.WriteHeader(404)
-	c.render("404", m{"Location": c.req.URL.String()})
+type jsonError struct {
+	error
+}
+
+func wrapErrorsJson() {
+	if r := recover(); r != nil {
+		if err, ok := r.(error); ok {
+			if _, ok := err.(jsonError); ok {
+				panic(err)
+			} else {
+				panic(jsonError{err})
+			}
+		}
+	}
+}
+
+type userError struct {
+	error
+}
+
+func ue(format string, v ...interface{}) userError {
+	return userError{ef(format, v...)}
+}
+
+func (ue userError) Error() string {
+	return ue.error.Error()
+}
+
+type systemError struct {
+	error
+}
+
+func se(format string, v ...interface{}) systemError {
+	return systemError{ef(format, v...)}
+}
+
+func (se systemError) Error() string {
+	return se.error.Error()
+}
+
+type authError struct {
+	error
+}
+
+func ae(format string, v ...interface{}) authError {
+	return authError{ef(format, v...)}
+}
+
+func (ae authError) Error() string {
+	return ae.error.Error()
 }
 
 func formatMessage(s string) html.HTML {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	html "html/template"
 	"log"
-	"net/url"
 	"reflect"
 	"strings"
 	"time"
@@ -20,26 +19,19 @@ var templateHelpers = map[string]interface{}{
 	"commafy":   thCommafy,
 	"stringify": thStringify,
 	"jsonify":   thJsonify,
-
-	"url": mkUrl,
+	"combine":   thCombine,
 
 	"datetime": thDateTime,
 	"date":     thDate,
 	"time":     thTime,
+
+	// This is filled in when the routes are resolved.
+	// Seems like a blemish in Martini.
+	"url": func(name string, pairs ...interface{}) string { return "" },
 }
 
 func htmlEscape(s string) string {
 	return html.HTMLEscapeString(s)
-}
-
-func mkUrl(name string, pairs ...string) *url.URL {
-	obj := router.Get(name)
-	if obj == nil {
-		panic(e("URL page with name '%s' does not exist.", name))
-	}
-	u, err := obj.URL(pairs...)
-	assert(err)
-	return u
 }
 
 func thJoin(sep string, items []string) string {
@@ -101,4 +93,37 @@ func thJsonify(v interface{}) html.JS {
 	buf := new(bytes.Buffer)
 	json.HTMLEscape(buf, bs)
 	return html.JS(buf.String())
+}
+
+// combine provides a way to compose values during template execution.
+// This is particularly useful when executing sub-templates. For example,
+// say you've defined two variables `$a` and `$b` that you want to pass to
+// a sub-template. But templates can only take a single pipeline. Combine will
+// let you bind any number of values. For example:
+//
+//	{{ template "tpl_name" (Combine "a" $a "b" $b) }}
+//
+// The template "tpl_name" can then access `$a` and `$b` with `.a` and `.b`.
+//
+// Note that the first and every other subsequent value must be strings. The
+// second and every other subsequent value may be anything. There must be an
+// even number of arguments given. If any part of this contract is violated,
+// the function panics.
+func thCombine(keyvals ...interface{}) map[string]interface{} {
+	if len(keyvals)%2 != 0 {
+		log.Printf("Combine must have even number of parameters but %d isn't.",
+			len(keyvals))
+		return nil
+	}
+	m := make(map[string]interface{})
+	for i := 0; i < len(keyvals); i += 2 {
+		key, ok := keyvals[i].(string)
+		if !ok {
+			log.Printf("Parameter %d to Combine must be a string but it is "+
+				"a %T.", i, keyvals[i])
+			return nil
+		}
+		m[key] = keyvals[i+1]
+	}
+	return m
 }
