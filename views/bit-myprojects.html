@@ -17,16 +17,15 @@
   <ul class="project-list">
   {{ range .MyProjects }}
     {{ $Proj := . }}
-    {{ $url := url "documents" "user" $Proj.Owner.Id "project" $Proj.Name }}
+    {{ $url := url "documents" $Proj.Owner.Id $Proj.Name }}
 
     <li>
       <p><a href="{{ $url }}">{{ .Display }}</a></p>
       <dl>
-        <dt>Created</dt>
-        <dd>{{ date $User $Proj.Added }}</dd>
-
         <dt>Documents</dt>
-        <dd>{{ $Proj.NumDocuments }}</dd>
+        <dd>{{ $Proj.NumDocuments }}
+            - <a href="{{ url "project-delete" $Proj.Name }}">Delete</a>
+        </dd>
 
         <dt>Collaborators</dt>
         <dd class="manage-collaborators">
@@ -38,7 +37,7 @@
             <a href="#" class="manage-start">Manage</a>
 
             <form class="manage-form hide" method="post"
-                  action="{{ url "manage-collaborators" }}">
+                  action="{{ url "project-collab-manage" }}">
               <input type="hidden"
                      name="ProjectName"
                      value="{{ $Proj.Name }}" />

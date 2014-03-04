@@ -38,9 +38,7 @@
   {{ range .js }}
     <script src="/static/js/{{ . }}.js"></script>
   {{ end }}
-  {{ if .User }}
-    <script src="/static/js/session-ping.js"></script>
-  {{ end }}
+  <script src="/static/js/session-ping.js"></script>
 </head>
 <body>
   {{ if .User }}
@@ -87,5 +85,5 @@
 
 
 {{ define "bit_nav" }}
-<a href="{{ .NavItem.Link }}">{{ .Name }}</a>
+<a href="{{ .NavItem.Link }}">{{ .NavItem.Name }}</a>
 {{ end }}

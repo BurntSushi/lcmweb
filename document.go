@@ -1,5 +1,5 @@
 package main
 
-func documents(w *web, user *lcmUser) {
+func documents(w *web) {
 	panic(se("WAT"))
 }

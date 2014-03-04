@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/http"
 	"regexp"
 	"sort"
 	"strings"
@@ -21,7 +22,7 @@ func projects(w *web) {
 		"js":    []string{"project"},
 		"Title": "Projects",
 		"Nav": w.mkNav(
-			nav{"Projects", "/projects"},
+			nav{"Projects", w.routes.URLFor("project-list")},
 		),
 		"MyProjects": w.user.projects(),
 	}
@@ -32,6 +33,39 @@ func bitMyProjects(w *web) {
 	w.html("bit-myprojects", m{
 		"MyProjects": w.user.projects(),
 	})
+}
+
+func deleteProject(w *web) {
+	proj := getProject(w.user, w.user.Id, w.params["project"])
+	if w.user.Id != proj.Owner.Id {
+		panic(ue("Only owners of projects can delete them."))
+	}
+	show := func(msg string) {
+		w.html("projects_delete", m{
+			"Nav": w.mkNav(
+				nav{"Projects", w.routes.URLFor("project-list")},
+			),
+			"Project": proj,
+			"Message": msg,
+		})
+	}
+	if w.r.Method == "GET" {
+		show("")
+	} else if w.r.Method == "POST" {
+		var form struct {
+			DisplayName string
+		}
+		w.dec(&form)
+		if form.DisplayName != proj.Display {
+			show(fmt.Sprintf("The name %s does not match the project name.",
+				form.DisplayName))
+			return
+		}
+		proj.delete()
+		http.Redirect(w.w, w.r, w.routes.URLFor("project-list"), 302)
+	} else {
+		panic(se("Unrecognized request method: %s", w.r.Method))
+	}
 }
 
 func addProject(w *web) {
@@ -159,6 +193,15 @@ func (proj *project) add() {
 		VALUES
 			($1, $2, $3, $4)
 	`, proj.Name, proj.Owner.No, proj.Display, proj.Added)
+}
+
+// delete will delete the project from the database. This includes all
+// attached collaborators and documents.
+func (proj *project) delete() {
+	mustExec(db, `
+		DELETE FROM project
+		WHERE name = $1 AND userno = $2
+	`, proj.Name, proj.Owner.No)
 }
 
 // validate will check to make sure a new project is valid and can be inserted

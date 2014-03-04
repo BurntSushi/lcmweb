@@ -6,6 +6,5 @@ $(document).ready(function() {
             }
         });
     }
-
     window.setInterval(ping, 30 * 1000);
 });

@@ -54,22 +54,25 @@ func main() {
 
 	m.Any("/favicon.ico", http.NotFound)
 
-	m.Post("/login", webGuest, postLogin)
+	m.Post("/login", webGuest, postLogin).Name("login")
 	m.Get("/newpassword/:userid", webGuest, newPassword).Name("newpassword")
 	m.Post("/newpassword-save", webGuest, newPasswordSave)
 	m.Post("/newpassword-send", webGuest, newPasswordSend)
 
 	m.Get("/logout", webAuth, logout)
-	m.Post("/noop", webAuth, func(w *web) { w.json(nil) }).Name("noop")
+	m.Post("/noop", webGuest, func(w *web) { w.json(nil) }).Name("noop")
 
 	m.Get("/", webAuth, projects)
-	m.Get("/projects", webAuth, projects).Name("projects")
-	m.Get("/bit/myprojects", webAuth, bitMyProjects).Name("bit-myprojects")
-	m.Post("/add-project", webAuth, addProject).Name("add-project")
-	m.Post("/manage-collaborators", webAuth, manageCollaborators).
-		Name("manage-collaborators")
-	m.Get("/bit/:user/:project/collaborators", webAuth, bitCollaborators).
-		Name("bit-collaborators")
+	m.Get("/project/list", webAuth, projects).Name("project-list")
+	m.Get("/project/bit/my", webAuth, bitMyProjects).Name("project-bit-my")
+	m.Post("/project/add", webAuth, addProject).Name("project-add")
+	m.Get("/project/delete/:project", webAuth, deleteProject).
+		Name("project-delete")
+	m.Post("/project/delete/:project", webAuth, deleteProject)
+	m.Post("/project/collab/manage", webAuth, manageCollaborators).
+		Name("project-collab-manage")
+	m.Get("/project/collab/list/:user/:project", webAuth, bitCollaborators).
+		Name("project-bit-collab")
 
 	m.Get("/:user/:project", webAuth, documents).Name("documents")
 

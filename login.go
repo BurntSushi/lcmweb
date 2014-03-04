@@ -53,7 +53,7 @@ func postLogin(w *web, routes martini.Routes) {
 
 	// If the user doesn't have a password in the database, then they need
 	// to set a password.
-	newPassUrl := routes.URLFor("newpassword", "userid", user.Id)
+	newPassUrl := routes.URLFor("newpassword", user.Id)
 	_, err := uauth.Get(user.Id)
 	if err != nil {
 		panic(ae("Account has no password. Please [set a new password]"+

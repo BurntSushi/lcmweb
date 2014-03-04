@@ -98,28 +98,28 @@ function is_success(json_response) {
 }
 
 function flash_success(html) {
-    $success = $('#flash_success');
+    var $success = $('#flash_success');
     if ($success.is(':visible')) {
         return;
     }
 
     $success.find('.flash_message').html(html);
     $success.fadeIn();
-    timeout = window.setTimeout(function() {
+    var timeout = window.setTimeout(function() {
         $success.fadeOut();
     }, 5 * 1000);
     $success.data('timeout', timeout);
 }
 
 function flash_error(html) {
-    $error = $('#flash_error');
-    $msg = $error.find('.flash_message');
+    var $error = $('#flash_error');
+    var $msg = $error.find('.flash_message');
     $msg.html(html);
     $error.fadeIn();
 }
 
 function flash_response_error(jr) {
-    html = '';
+    var html = '';
     if (jr.status == 'noauth') {
         html = "<p>Your account is no longer authenticated. Please " +
                "<a href=\"javascript:window.location.replace(window.location);\">" +
@@ -145,28 +145,22 @@ function flash_hide_error() {
 }
 
 function form_set_error(message) {
-    $err = $('#form_error');
+    var $err = $('#form_error');
     $err.find('.form_error_message').html('<p>' + message + '</p>');
     $err.show();
 }
 
 function form_response_error(json_response) {
     if (!is_success(json_response)) {
-        $err = $('#form_error');
-        $msg = $err.find('.form_error_message');
         if (json_response.status && json_response.message) {
-            $msg.html('<p>' + json_response.message + '</p>');
-        } else {
-            $msg.html('<p>Unknown error.</p>');
+            msg = json_response.message;
         }
-
-        $err.show();
-        return
+        form_set_error(msg);
     }
 }
 
 function form_hide_error() {
-    $err = $('#form_error');
+    var $err = $('#form_error');
     $err.hide();
 }
 
@@ -196,8 +190,8 @@ $(document).ready(function() {
         flash_hide_error();
     });
     $('#flash_success a.flash_dismiss').click(function() {
-        $success = $('#flash_success');
-        timeout = $success.data('timeout');
+        var $success = $('#flash_success');
+        var timeout = $success.data('timeout');
         if (timeout) {
             window.clearTimeout(timeout);
         }

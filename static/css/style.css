@@ -36,6 +36,16 @@ a:hover {
   color: #AB8043;
 }
 
+.attn {
+  color: #b00;
+  font-weight: bold;
+}
+
+input[value="Delete"] {
+  background: #b00;
+  color: #fff;
+}
+
 .hide {
   display: none;
 }
@@ -157,13 +167,6 @@ a:hover {
   }
 
 #add-project {
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 6px;
-  border: 2px solid #888;
-  background: #fdfdfd;
-  white-space: nowrap;
 }
 
 ul.project-list {

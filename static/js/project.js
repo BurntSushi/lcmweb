@@ -12,7 +12,6 @@ function ready_my_projects() {
             if ($form.is(':visible')) {
                 return;
             }
-
             viewable_show($form, ev);
         });
         $done.click(function(ev) {
@@ -28,7 +27,7 @@ function ready_my_projects() {
                 return;
             }
 
-            var url = '/bit/{0}/{1}/collaborators'.format(User.Id, proj_name);
+            var url = '/project/collab/list/{0}/{1}'.format(User.Id, proj_name);
             html_get(url).done(function(data, stat, xhr) {
                 $collabs.html(data);
             });
@@ -54,19 +53,9 @@ $(document).ready(function() {
         $display_name.blur();
 
         flash_success('Project <strong>' + r.content + '</strong> added.');
-        html_get('/bit/myprojects').done(function(data, stat, xhr) {
+        html_get('/project/bit/my').done(function(data, stat, xhr) {
             $('#my-projects').html(data);
-            viewable_hide($form);
             ready_my_projects();
         });
-    });
-
-    $('#show-add-project').click(function(ev) {
-        ev.preventDefault();
-        viewable_show($form, ev, function() { $display_name.focus(); });
-    });
-    $form.find('#add-project-cancel').click(function() {
-        viewable_hide($form);
-        $display_name.blur();
     });
 });

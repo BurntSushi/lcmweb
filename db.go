@@ -35,7 +35,7 @@ var schemaMigrations = []migration.Migrator{
 				PRIMARY KEY (project_name, project_owner, userno),
 				FOREIGN KEY (project_name, project_owner)
 					REFERENCES project (name, userno)
-					ON DELETE RESTRICT
+					ON DELETE CASCADE
 			);
 			`)
 		return err
