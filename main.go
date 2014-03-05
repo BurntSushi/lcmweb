@@ -69,7 +69,7 @@ func main() {
 	m.Get("/project/delete/:project", webAuth, deleteProject).
 		Name("project-delete")
 	m.Post("/project/delete/:project", webAuth, deleteProject)
-	m.Post("/project/collab/manage", webAuth, manageCollaborators).
+	m.Post("/project/collab/manage", jsonResp, webAuth, manageCollaborators).
 		Name("project-collab-manage")
 	m.Get("/project/collab/list/:user/:project", webAuth, bitCollaborators).
 		Name("project-bit-collab")
