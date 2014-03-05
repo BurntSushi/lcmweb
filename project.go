@@ -101,7 +101,7 @@ func manageCollaborators(w *web) {
 	locker.Lock(lockKey)
 	defer locker.Unlock(lockKey)
 
-	csql.Panic(csql.Tx(db, func(tx *sql.Tx) {
+	csql.Tx(db, func(tx *sql.Tx) {
 		csql.Exec(tx, `
 			DELETE FROM
 				collaborator
@@ -117,7 +117,7 @@ func manageCollaborators(w *web) {
 					($1, $2, $3)
 			`, proj.Name, proj.Owner.Id, u.Id)
 		}
-	}))
+	})
 
 	w.json(w.r.PostForm)
 }
@@ -262,7 +262,7 @@ func (proj *project) Collaborators() []*lcmUser {
 		WHERE
 			project_name = $1 AND project_owner = $2
 	`, proj.Name, proj.Owner.Id)
-	csql.Panic(csql.ForRow(rows, func(s csql.RowScanner) {
+	csql.ForRow(rows, func(s csql.RowScanner) {
 		var userid string
 		csql.Scan(rows, &userid)
 
@@ -272,7 +272,7 @@ func (proj *project) Collaborators() []*lcmUser {
 		} else {
 			proj.collaborators = append(proj.collaborators, user)
 		}
-	}))
+	})
 	sort.Sort(usersAlphabetical(proj.collaborators))
 	return proj.collaborators
 }
@@ -289,10 +289,10 @@ func (user *lcmUser) projects() []*project {
 		ORDER BY
 			display ASC
 	`, user.Id)
-	csql.Panic(csql.ForRow(rows, func(s csql.RowScanner) {
+	csql.ForRow(rows, func(s csql.RowScanner) {
 		proj := &project{Owner: user}
 		csql.Scan(rows, &proj.Name, &proj.Display, &proj.Added)
 		projs = append(projs, proj)
-	}))
+	})
 	return projs
 }

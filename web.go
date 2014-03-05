@@ -145,7 +145,7 @@ func recovery(
 				ren.HTML(200, "error", m{
 					"Message": formatMessage(err.Error()),
 				})
-			case csql.SQLError:
+			case csql.Error:
 				ren.HTML(200, "error", m{
 					"Message": formatMessage(err.Error()),
 				})
