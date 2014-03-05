@@ -61,7 +61,7 @@
   <ul class="project-list">
   {{ range .MyProjects }}
     {{ $Proj := . }}
-    {{ $url := url "documents" $Proj.Owner.Id $Proj.Name }}
+    {{ $url := url "document-list" $Proj.Owner.Id $Proj.Name }}
 
     <li>
       <p><a href="{{ $url }}">{{ .Display }}</a></p>

@@ -1,0 +1,9 @@
+{{ define "documents" }}
+{{ template "header" . }}
+<h3>Documents for {{ .P.Display }}</h3>
+
+<p><a href="{{ url "document-add" .P.Owner.Id .P.Name }}">Add document</a></p>
+
+{{ template "footer" . }}
+{{ end }}
+

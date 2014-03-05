@@ -74,7 +74,8 @@ func main() {
 	m.Get("/project/collab/list/:user/:project", webAuth, bitCollaborators).
 		Name("project-bit-collab")
 
-	m.Get("/:user/:project", webAuth, documents).Name("documents")
+	m.Get("/:owner/:project", webAuth, documents).Name("document-list")
+	m.Get("/:owner/:project/add", webAuth, addDocument).Name("document-add")
 
 	m.Run()
 }
