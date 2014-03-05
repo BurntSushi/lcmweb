@@ -52,7 +52,7 @@ type configUser struct {
 	Name          string
 	Email         string
 	Admin         bool
-	TimeZone      string `toml:"time_zone"`
+	TimeZone      string
 	timeZone      *time.Location
 	DateFmt       string
 	TimeFmt       string
