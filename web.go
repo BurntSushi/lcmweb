@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/BurntSushi/csql"
+
 	"github.com/gorilla/schema"
 	"github.com/gorilla/sessions"
 
@@ -140,6 +142,10 @@ func recovery(
 			case authError:
 				authenticate(err, dec, ren, req)
 			case userError:
+				ren.HTML(200, "error", m{
+					"Message": formatMessage(err.Error()),
+				})
+			case csql.SQLError:
 				ren.HTML(200, "error", m{
 					"Message": formatMessage(err.Error()),
 				})

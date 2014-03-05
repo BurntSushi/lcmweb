@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/csql"
 	"github.com/BurntSushi/locker"
 )
 
@@ -100,8 +101,8 @@ func manageCollaborators(w *web) {
 	locker.Lock(lockKey)
 	defer locker.Unlock(lockKey)
 
-	safeTransaction(db, func(tx *sql.Tx) {
-		mustExec(tx, `
+	csql.Panic(csql.Tx(db, func(tx *sql.Tx) {
+		csql.Exec(tx, `
 			DELETE FROM
 				collaborator
 			WHERE
@@ -109,14 +110,14 @@ func manageCollaborators(w *web) {
 		`, proj.Name, proj.Owner.Id)
 		for _, collaborator := range form.Collaborators {
 			u := findUserById(collaborator)
-			mustExec(tx, `
+			csql.Exec(tx, `
 				INSERT INTO collaborator
 					(project_name, project_owner, userid)
 				VALUES
 					($1, $2, $3)
 			`, proj.Name, proj.Owner.Id, u.Id)
 		}
-	})
+	}))
 
 	w.json(w.r.PostForm)
 }
@@ -185,7 +186,7 @@ func projNameToDisplay(name string) string {
 
 // add will add the project to the database.
 func (proj *project) add() {
-	mustExec(db, `
+	csql.Exec(db, `
 		INSERT INTO project 
 			(name, userid, display, timeline)
 		VALUES
@@ -196,7 +197,7 @@ func (proj *project) add() {
 // delete will delete the project from the database. This includes all
 // attached collaborators and documents.
 func (proj *project) delete() {
-	mustExec(db, `
+	csql.Exec(db, `
 		DELETE FROM project
 		WHERE name = $1 AND userid = $2
 	`, proj.Name, proj.Owner.Id)
@@ -222,18 +223,15 @@ func (proj *project) validate() {
 
 // isDuplicate returns true if the project already exists.
 func (proj *project) isDuplicate() bool {
-	find := db.QueryRow(`
+	n := csql.Count(db, `
 		SELECT
 			COUNT(*)
 		FROM
 			project
 		WHERE
 			name = $1 AND userid = $2
-	`, proj.Name, proj.Owner.Id)
-
-	var count int
-	mustScan(find, &count)
-	return count > 0
+		`, proj.Name, proj.Owner.Id)
+	return n > 0
 }
 
 func (proj *project) NumDocuments() int {
@@ -256,7 +254,7 @@ func (proj *project) Collaborators() []*lcmUser {
 
 	proj.collaborators = make([]*lcmUser, 0)
 
-	rows := mustQuery(db, `
+	rows := csql.Query(db, `
 		SELECT
 			userid
 		FROM
@@ -264,9 +262,9 @@ func (proj *project) Collaborators() []*lcmUser {
 		WHERE
 			project_name = $1 AND project_owner = $2
 	`, proj.Name, proj.Owner.Id)
-	for rows.Next() {
+	csql.Panic(csql.ForRow(rows, func(s csql.RowScanner) {
 		var userid string
-		mustScan(rows, &userid)
+		csql.Scan(rows, &userid)
 
 		if user := findUserByNo(userid); user == nil {
 			log.Printf("Could not find collaborator %s for "+
@@ -274,16 +272,14 @@ func (proj *project) Collaborators() []*lcmUser {
 		} else {
 			proj.collaborators = append(proj.collaborators, user)
 		}
-	}
-	assert(rows.Err())
-
+	}))
 	sort.Sort(usersAlphabetical(proj.collaborators))
 	return proj.collaborators
 }
 
 func (user *lcmUser) projects() []*project {
 	projs := make([]*project, 0)
-	rows := mustQuery(db, `
+	rows := csql.Query(db, `
 		SELECT
 			name, display, timeline
 		FROM
@@ -293,11 +289,10 @@ func (user *lcmUser) projects() []*project {
 		ORDER BY
 			display ASC
 	`, user.Id)
-	for rows.Next() {
+	csql.Panic(csql.ForRow(rows, func(s csql.RowScanner) {
 		proj := &project{Owner: user}
-		mustScan(rows, &proj.Name, &proj.Display, &proj.Added)
+		csql.Scan(rows, &proj.Name, &proj.Display, &proj.Added)
 		projs = append(projs, proj)
-	}
-	assert(rows.Err())
+	}))
 	return projs
 }
