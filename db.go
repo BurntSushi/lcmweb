@@ -66,10 +66,12 @@ var schemaMigrations = []migration.Migrator{
 				word INTEGER NOT NULL,
 				category TEXT NOT NULL,
 				name TEXT NOT NULL,
+				created_by TEXT NOT NULL,
+				created utctime NOT NULL,
 				PRIMARY KEY
 					(project_owner, project_name,
 					 document_name, document_recorded,
-					 word, category, name),
+					 word, category),
 				FOREIGN KEY (project_owner, project_name)
 					REFERENCES project (owner, name)
 					ON DELETE CASCADE
