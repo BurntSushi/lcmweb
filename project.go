@@ -55,7 +55,7 @@ func deleteProject(w *web) {
 		var form struct {
 			DisplayName string
 		}
-		w.dec(&form)
+		w.decode(&form)
 		if form.DisplayName != proj.Display {
 			show(fmt.Sprintf("The name %s does not match the project name.",
 				form.DisplayName))
@@ -64,17 +64,15 @@ func deleteProject(w *web) {
 		proj.delete()
 		http.Redirect(w.w, w.r, w.routes.URLFor("project-list"), 302)
 	} else {
-		panic(se("Unrecognized request method: %s", w.r.Method))
+		panic(ef("Unrecognized request method: %s", w.r.Method))
 	}
 }
 
 func addProject(w *web) {
-	defer wrapErrorsJson()
-
 	var form struct {
 		DisplayName string
 	}
-	w.dec(&form)
+	w.decode(&form)
 
 	proj := project{
 		Owner:   w.user,
@@ -93,7 +91,7 @@ func manageCollaborators(w *web) {
 		ProjectName   string
 		Collaborators []string
 	}
-	w.dec(&form)
+	w.decode(&form)
 	proj := getProject(w.user, w.user.Id, form.ProjectName)
 
 	// We need to do a delete followed by an insert, which means we need
@@ -108,15 +106,15 @@ func manageCollaborators(w *web) {
 				collaborator
 			WHERE
 				project_name = $1 AND project_owner = $2
-		`, proj.Name, proj.Owner.No)
+		`, proj.Name, proj.Owner.Id)
 		for _, collaborator := range form.Collaborators {
 			u := findUserById(collaborator)
 			mustExec(tx, `
 				INSERT INTO collaborator
-					(project_name, project_owner, userno)
+					(project_name, project_owner, userid)
 				VALUES
 					($1, $2, $3)
-			`, proj.Name, proj.Owner.No, u.No)
+			`, proj.Name, proj.Owner.Id, u.Id)
 		}
 	})
 
@@ -148,20 +146,20 @@ func getProject(user *lcmUser, projOwner, projName string) *project {
 		FROM
 			project
 		WHERE
-			name = $1 AND userno = $2
-	`, projName, owner.No).
+			name = $1 AND userid = $2
+	`, projName, owner.Id).
 		Scan(&proj.Name, &proj.Display, &proj.Added))
 
 	// If the owner of the project is the current user, then permission
 	// is self evident.
-	if user.No == owner.No {
+	if user.Id == owner.Id {
 		return proj
 	}
 
 	// Now the only way the viewing user has permission is if the user is
 	// a collaborator on the project.
 	for _, collab := range proj.Collaborators() {
-		if user.No == collab.No {
+		if user.Id == collab.Id {
 			return proj
 		}
 	}
@@ -189,10 +187,10 @@ func projNameToDisplay(name string) string {
 func (proj *project) add() {
 	mustExec(db, `
 		INSERT INTO project 
-			(name, userno, display, timeline)
+			(name, userid, display, timeline)
 		VALUES
 			($1, $2, $3, $4)
-	`, proj.Name, proj.Owner.No, proj.Display, proj.Added)
+	`, proj.Name, proj.Owner.Id, proj.Display, proj.Added)
 }
 
 // delete will delete the project from the database. This includes all
@@ -200,15 +198,13 @@ func (proj *project) add() {
 func (proj *project) delete() {
 	mustExec(db, `
 		DELETE FROM project
-		WHERE name = $1 AND userno = $2
-	`, proj.Name, proj.Owner.No)
+		WHERE name = $1 AND userid = $2
+	`, proj.Name, proj.Owner.Id)
 }
 
 // validate will check to make sure a new project is valid and can be inserted
 // into the DB.
 func (proj *project) validate() {
-	defer wrapErrorsJson()
-
 	if len(proj.Name) < 1 {
 		panic(ue("Projects names must be at least one character."))
 	}
@@ -232,8 +228,8 @@ func (proj *project) isDuplicate() bool {
 		FROM
 			project
 		WHERE
-			name = $1 AND userno = $2
-	`, proj.Name, proj.Owner.No)
+			name = $1 AND userid = $2
+	`, proj.Name, proj.Owner.Id)
 
 	var count int
 	mustScan(find, &count)
@@ -246,7 +242,7 @@ func (proj *project) NumDocuments() int {
 
 func (proj *project) IsCollaborator(user *lcmUser) bool {
 	for _, collaborator := range proj.Collaborators() {
-		if user.No == collaborator.No {
+		if user.Id == collaborator.Id {
 			return true
 		}
 	}
@@ -262,19 +258,19 @@ func (proj *project) Collaborators() []*lcmUser {
 
 	rows := mustQuery(db, `
 		SELECT
-			userno
+			userid
 		FROM
 			collaborator
 		WHERE
 			project_name = $1 AND project_owner = $2
-	`, proj.Name, proj.Owner.No)
+	`, proj.Name, proj.Owner.Id)
 	for rows.Next() {
-		var userno int
-		mustScan(rows, &userno)
+		var userid string
+		mustScan(rows, &userid)
 
-		if user := findUserByNo(userno); user == nil {
-			log.Printf("Could not find collaborator with number %d for "+
-				"project '%s' owned by '%s'.", userno, proj.Name, proj.Owner.Id)
+		if user := findUserByNo(userid); user == nil {
+			log.Printf("Could not find collaborator %s for "+
+				"project '%s' owned by '%s'.", userid, proj.Name, proj.Owner.Id)
 		} else {
 			proj.collaborators = append(proj.collaborators, user)
 		}
@@ -293,10 +289,10 @@ func (user *lcmUser) projects() []*project {
 		FROM
 			project
 		WHERE
-			userno = $1
+			userid = $1
 		ORDER BY
 			display ASC
-	`, user.No)
+	`, user.Id)
 	for rows.Next() {
 		proj := &project{Owner: user}
 		mustScan(rows, &proj.Name, &proj.Display, &proj.Added)

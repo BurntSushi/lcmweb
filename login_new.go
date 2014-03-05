@@ -31,16 +31,14 @@ func newPassword(w *web) {
 }
 
 func newPasswordSave(w *web) {
-	defer wrapErrorsJson()
-
 	var form formNewPass
-	w.dec(&form)
+	w.decode(&form)
 	user := findResettableUser(form.UserId)
 
 	// If there's no security key, then something has gone wrong.
 	skey := sessGet(w.s, sessionSecurityKey)
 	if len(skey) == 0 {
-		panic(se("Could not determine your security code. " +
+		panic(ue("Could not determine your security code. " +
 			"Try re-sending the email."))
 	}
 
@@ -72,10 +70,8 @@ func newPasswordSave(w *web) {
 // sendEmail always sets a new cookie (overwriting an existing one)
 // and sends an email to the user containing the security code.
 func newPasswordSend(w *web) {
-	defer wrapErrorsJson()
-
 	var form formNewPass
-	w.dec(&form)
+	w.decode(&form)
 	user := findResettableUser(form.UserId)
 
 	// Wait to complete, since this is an asynchronous request already.

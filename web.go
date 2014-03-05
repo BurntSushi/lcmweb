@@ -23,7 +23,7 @@ type web struct {
 	w      http.ResponseWriter
 	s      *sessions.Session
 	ren    render.Render
-	dec    formDecoder
+	decode formDecoder
 	user   *lcmUser
 }
 
@@ -40,7 +40,7 @@ func webGuest(
 ) {
 	state := &web{
 		lg: lg, c: c, routes: routes, params: params,
-		r: r, w: w, s: s, ren: ren, dec: dec,
+		r: r, w: w, s: s, ren: ren, decode: dec,
 	}
 	ren.Template().Funcs(template.FuncMap{
 		"url": state.url,
@@ -65,7 +65,7 @@ func webAuth(
 	}
 	state := &web{
 		lg: lg, c: c, routes: routes, params: params,
-		r: r, w: w, s: s, ren: ren, dec: dec,
+		r: r, w: w, s: s, ren: ren, decode: dec,
 		user: findUserById(userId),
 	}
 	ren.Template().Funcs(template.FuncMap{
@@ -126,35 +126,29 @@ func session(store sessions.Store, name string) martini.Handler {
 	}
 }
 
-func errors() martini.Handler {
-	return func(
-		c martini.Context,
-		req *http.Request,
-		ren render.Render,
-		dec formDecoder,
-	) {
-		defer func() {
-			if r := recover(); r != nil {
-				switch err := r.(type) {
-				case jsonError:
-					handleJsonError(err, ren)
-				case authError:
-					authenticate(err, dec, ren, req)
-				case userError:
-					ren.HTML(200, "error", m{
-						"Message": formatMessage(err.Error()),
-					})
-				case systemError:
-					ren.HTML(200, "error", m{
-						"Message": formatMessage(err.Error()),
-					})
-				default:
-					panic(r)
-				}
+func recovery(
+	c martini.Context,
+	req *http.Request,
+	ren render.Render,
+	dec formDecoder,
+) {
+	defer func() {
+		if r := recover(); r != nil {
+			switch err := r.(type) {
+			case jsonError:
+				handleJsonError(err, ren)
+			case authError:
+				authenticate(err, dec, ren, req)
+			case userError:
+				ren.HTML(200, "error", m{
+					"Message": formatMessage(err.Error()),
+				})
+			default:
+				panic(r)
 			}
-		}()
-		c.Next()
-	}
+		}
+	}()
+	c.Next()
 }
 
 func handleJsonError(err jsonError, ren render.Render) {
@@ -169,14 +163,31 @@ func handleJsonError(err jsonError, ren render.Render) {
 			"status":  "fail",
 			"message": formatMessage(e.Error()),
 		})
-	case systemError:
+	default:
 		ren.JSON(200, m{
 			"status":  "error",
 			"message": formatMessage(e.Error()),
 		})
-	default:
-		panic(err)
 	}
+}
+
+type jsonError struct {
+	error
+}
+
+func jsonResp(c martini.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				if _, ok := err.(jsonError); ok {
+					panic(r)
+				} else {
+					panic(jsonError{err})
+				}
+			}
+		}
+	}()
+	c.Next()
 }
 
 type formDecoder func(v interface{})

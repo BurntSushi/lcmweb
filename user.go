@@ -29,8 +29,8 @@ func findUserById(userid string) *lcmUser {
 // findUserByNo finds a user by a given user number. We don't panic here
 // because we only look for users by number to match things in the DB. If
 // we don't find a match, we want to be free to ignore it.
-func findUserByNo(userno int) *lcmUser {
-	if user, ok := conf.usersById[userno]; ok {
+func findUserByNo(userid string) *lcmUser {
+	if user, ok := conf.usersById[userid]; ok {
 		return newLcmUser(user)
 	}
 	return nil
@@ -41,7 +41,7 @@ func (user *lcmUser) String() string {
 }
 
 func (user *lcmUser) valid() bool {
-	return user != nil && user.No > 0
+	return user != nil && len(user.Id) > 0
 }
 
 func (user *lcmUser) lock() {

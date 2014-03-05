@@ -23,18 +23,18 @@ var schemaMigrations = []migration.Migrator{
 		_, err := tx.Exec(`
 			CREATE TABLE project (
 				name varchar (255) NOT NULL,
-				userno smallint NOT NULL,
+				userid varchar (255) NOT NULL,
 				display varchar (255) NOT NULL,
 				timeline timestamp without time zone,
-				PRIMARY KEY (name, userno)
+				PRIMARY KEY (name, userid)
 			);
 			CREATE TABLE collaborator (
 				project_name varchar (255) NOT NULL,
-				project_owner smallint NOT NULL,
-				userno smallint NOT NULL,
-				PRIMARY KEY (project_name, project_owner, userno),
+				project_owner varchar (255) NOT NULL,
+				userid varchar (255) NOT NULL,
+				PRIMARY KEY (project_name, project_owner, userid),
 				FOREIGN KEY (project_name, project_owner)
-					REFERENCES project (name, userno)
+					REFERENCES project (name, userid)
 					ON DELETE CASCADE
 			);
 			`)

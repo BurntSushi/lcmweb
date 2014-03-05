@@ -16,22 +16,6 @@ func assert(err error) {
 	}
 }
 
-type jsonError struct {
-	error
-}
-
-func wrapErrorsJson() {
-	if r := recover(); r != nil {
-		if err, ok := r.(error); ok {
-			if _, ok := err.(jsonError); ok {
-				panic(err)
-			} else {
-				panic(jsonError{err})
-			}
-		}
-	}
-}
-
 type userError struct {
 	error
 }
@@ -42,18 +26,6 @@ func ue(format string, v ...interface{}) userError {
 
 func (ue userError) Error() string {
 	return ue.error.Error()
-}
-
-type systemError struct {
-	error
-}
-
-func se(format string, v ...interface{}) systemError {
-	return systemError{ef(format, v...)}
-}
-
-func (se systemError) Error() string {
-	return se.error.Error()
 }
 
 type authError struct {

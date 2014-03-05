@@ -15,7 +15,7 @@ type config struct {
 	Options   configOptions
 	Security  configSecurity
 	Users     map[string]configUser
-	usersById map[int]configUser
+	usersById map[string]configUser
 	Scores    map[string]configScoringScheme
 }
 
@@ -48,7 +48,6 @@ type configSecurity struct {
 }
 
 type configUser struct {
-	No            int
 	Id            string
 	Name          string
 	Email         string
@@ -130,13 +129,13 @@ func newConfig() (conf config) {
 	}
 
 	// For faster lookups.
-	conf.usersById = make(map[int]configUser, len(conf.Users))
+	conf.usersById = make(map[string]configUser, len(conf.Users))
 	for _, user := range conf.Users {
-		if dupe, ok := conf.usersById[user.No]; ok {
-			log.Fatalf("Two users ('%s' and '%s') cannot have the same "+
-				"number %d.", user.Id, dupe.Id, user.No)
+		if dupe, ok := conf.usersById[user.Id]; ok {
+			log.Fatalf("Two users ('%s' and '%s') cannot have the same name.",
+				user.Id, dupe.Id)
 		}
-		conf.usersById[user.No] = user
+		conf.usersById[user.Id] = user
 	}
 
 	return

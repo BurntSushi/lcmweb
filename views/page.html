@@ -26,7 +26,6 @@
   {{ if .User }}
     <script>
       var User = {
-        "No": {{ jsonify .User.No }},
         "Id": {{ jsonify .User.Id }},
         "Name": {{ jsonify .User.Name }}
       };

@@ -44,7 +44,7 @@ func authenticate(
 
 func postLogin(w *web, routes martini.Routes) {
 	var form formLogin
-	w.dec(&form)
+	w.decode(&form)
 
 	user := findUserByEmail(form.Email)
 	if !user.valid() {
