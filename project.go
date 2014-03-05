@@ -106,16 +106,16 @@ func manageCollaborators(w *web) {
 			DELETE FROM
 				collaborator
 			WHERE
-				project_name = $1 AND project_owner = $2
-		`, proj.Name, proj.Owner.Id)
+				project_owner = $1 AND project_name = $2
+		`, proj.Owner.Id, proj.Name)
 		for _, collaborator := range form.Collaborators {
 			u := findUserById(collaborator)
 			csql.Exec(tx, `
 				INSERT INTO collaborator
-					(project_name, project_owner, userid)
+					(project_owner, project_name, userid)
 				VALUES
 					($1, $2, $3)
-			`, proj.Name, proj.Owner.Id, u.Id)
+			`, proj.Owner.Id, proj.Name, u.Id)
 		}
 	})
 
@@ -143,12 +143,12 @@ func getProject(user *lcmUser, projOwner, projName string) *project {
 
 	assert(db.QueryRow(`
 		SELECT
-			name, display, timeline
+			name, display, created
 		FROM
 			project
 		WHERE
-			name = $1 AND userid = $2
-	`, projName, owner.Id).
+			owner = $1 AND name = $2
+	`, owner.Id, projName).
 		Scan(&proj.Name, &proj.Display, &proj.Added))
 
 	// If the owner of the project is the current user, then permission
@@ -188,10 +188,10 @@ func projNameToDisplay(name string) string {
 func (proj *project) add() {
 	csql.Exec(db, `
 		INSERT INTO project 
-			(name, userid, display, timeline)
+			(owner, name, display, created)
 		VALUES
 			($1, $2, $3, $4)
-	`, proj.Name, proj.Owner.Id, proj.Display, proj.Added)
+	`, proj.Owner.Id, proj.Name, proj.Display, proj.Added)
 }
 
 // delete will delete the project from the database. This includes all
@@ -199,8 +199,8 @@ func (proj *project) add() {
 func (proj *project) delete() {
 	csql.Exec(db, `
 		DELETE FROM project
-		WHERE name = $1 AND userid = $2
-	`, proj.Name, proj.Owner.Id)
+		WHERE owner = $1 AND name = $2
+	`, proj.Owner.Id, proj.Name)
 }
 
 // validate will check to make sure a new project is valid and can be inserted
@@ -229,8 +229,8 @@ func (proj *project) isDuplicate() bool {
 		FROM
 			project
 		WHERE
-			name = $1 AND userid = $2
-		`, proj.Name, proj.Owner.Id)
+			owner = $1 AND name = $2
+		`, proj.Owner.Id, proj.Name)
 	return n > 0
 }
 
@@ -281,11 +281,11 @@ func (user *lcmUser) projects() []*project {
 	projs := make([]*project, 0)
 	rows := csql.Query(db, `
 		SELECT
-			name, display, timeline
+			name, display, created
 		FROM
 			project
 		WHERE
-			userid = $1
+			owner = $1
 		ORDER BY
 			display ASC
 	`, user.Id)

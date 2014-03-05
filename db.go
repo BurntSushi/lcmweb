@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/sessions"
 
+	"github.com/BurntSushi/csql"
 	"github.com/BurntSushi/migration"
 	"github.com/BurntSushi/sqlsess"
 )
@@ -21,21 +22,62 @@ const (
 var schemaMigrations = []migration.Migrator{
 	func(tx migration.LimitedTx) error {
 		_, err := tx.Exec(`
+			CREATE DOMAIN utctime AS timestamp with time zone
+				CHECK (EXTRACT(TIMEZONE FROM VALUE) = '0');
+
 			CREATE TABLE project (
-				name varchar (255) NOT NULL,
-				userid varchar (255) NOT NULL,
-				display varchar (255) NOT NULL,
-				timeline timestamp without time zone,
-				PRIMARY KEY (name, userid)
+				owner TEXT NOT NULL,
+				name TEXT NOT NULL,
+				display TEXT NOT NULL,
+				created utctime NOT NULL,
+				PRIMARY KEY (owner, name)
 			);
 			CREATE TABLE collaborator (
-				project_name varchar (255) NOT NULL,
-				project_owner varchar (255) NOT NULL,
-				userid varchar (255) NOT NULL,
-				PRIMARY KEY (project_name, project_owner, userid),
-				FOREIGN KEY (project_name, project_owner)
-					REFERENCES project (name, userid)
+				project_owner TEXT NOT NULL,
+				project_name TEXT NOT NULL,
+				userid TEXT NOT NULL,
+				PRIMARY KEY (project_owner, project_name, userid),
+				FOREIGN KEY (project_owner, project_name)
+					REFERENCES project (owner, name)
 					ON DELETE CASCADE
+					ON UPDATE CASCADE
+			);
+			CREATE TABLE document (
+				project_owner TEXT NOT NULL,
+				project_name TEXT NOT NULL,
+				name TEXT NOT NULL,
+				recorded DATE NOT NULL,
+				categories TEXT NOT NULL,
+				content TEXT NOT NULL,
+				created_by TEXT NOT NULL,
+				created utctime NOT NULL,
+				modified utctime NOT NULL,
+				PRIMARY KEY (name, recorded),
+				FOREIGN KEY (project_owner, project_name)
+					REFERENCES project (owner, name)
+					ON DELETE CASCADE
+					ON UPDATE CASCADE
+			);
+			CREATE TABLE score (
+				project_owner TEXT NOT NULL,
+				project_name TEXT NOT NULL,
+				document_name TEXT NOT NULL,
+				document_recorded DATE NOT NULL,
+				word INTEGER NOT NULL,
+				category TEXT NOT NULL,
+				name TEXT NOT NULL,
+				PRIMARY KEY
+					(project_owner, project_name,
+					 document_name, document_recorded,
+					 word, category, name),
+				FOREIGN KEY (project_owner, project_name)
+					REFERENCES project (owner, name)
+					ON DELETE CASCADE
+					ON UPDATE CASCADE,
+				FOREIGN KEY (document_name, document_recorded)
+					REFERENCES document (name, recorded)
+					ON DELETE CASCADE
+					ON UPDATE CASCADE
 			);
 			`)
 		return err
@@ -54,9 +96,14 @@ func connect(conf configPgsql) *lcmDB {
 
 	pgsqlDB, err := migration.Open("postgres", conns, schemaMigrations)
 	if err != nil {
-		log.Fatalf("Could not connect to PostgreSQL (%s@s/%s): %s",
+		log.Fatalf("Could not connect to PostgreSQL (%s@%s/%s): %s",
 			conf.User, conf.Host, conf.Database, err)
 	}
+
+	// All time operations in the database are done in UTC.
+	// Times for the user (in their timezone) are mostly handled in template
+	// helper functions.
+	csql.Exec(pgsqlDB, "SET timezone = UTC")
 	return &lcmDB{pgsqlDB, conf}
 }
 
