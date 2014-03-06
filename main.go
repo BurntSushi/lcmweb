@@ -76,6 +76,7 @@ func main() {
 
 	m.Get("/:owner/:project", webAuth, documents).Name("document-list")
 	m.Get("/:owner/:project/add", webAuth, addDocument).Name("document-add")
+	m.Post("/document/upload", webAuth, uploadDocument).Name("document-upload")
 
 	m.Run()
 }

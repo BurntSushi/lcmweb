@@ -50,6 +50,10 @@ input[value="Delete"] {
   display: none;
 }
 
+.small {
+  font-size: 85%;
+}
+
 .success {
   font-weight: bold;
   color: #0b0;
@@ -221,3 +225,31 @@ ul.project-list {
               margin: 0;
               padding: 0;
             }
+
+.form_input {
+  margin-bottom: 15px;
+}
+
+  .form_input > label:first-child {
+    display: inline-block;
+    text-align: left;
+    width: 210px;
+    vertical-align: top;
+    margin-right: 15px;
+  }
+
+  .form_input div {
+    display: inline-block;
+  }
+
+  .form_input input, .form_input textarea {
+    /* vertical-align: top; */
+  }
+
+.form_document input[name="Display"], .form_document textarea {
+  width: 700px;
+}
+
+.form_document textarea {
+  height: 500px;
+}

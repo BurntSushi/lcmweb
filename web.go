@@ -17,16 +17,17 @@ import (
 
 // web is a convenience type for collecting commonly used state.
 type web struct {
-	lg     *log.Logger
-	c      martini.Context
-	routes martini.Routes
-	params martini.Params
-	r      *http.Request
-	w      http.ResponseWriter
-	s      *sessions.Session
-	ren    render.Render
-	decode formDecoder
-	user   *lcmUser
+	lg          *log.Logger
+	c           martini.Context
+	routes      martini.Routes
+	params      martini.Params
+	r           *http.Request
+	w           http.ResponseWriter
+	s           *sessions.Session
+	ren         render.Render
+	decode      formDecoder
+	multiDecode multiDecoder
+	user        *lcmUser
 }
 
 func webGuest(
@@ -39,10 +40,12 @@ func webGuest(
 	s *sessions.Session,
 	ren render.Render,
 	dec formDecoder,
+	mdec multiDecoder,
 ) {
 	state := &web{
 		lg: lg, c: c, routes: routes, params: params,
-		r: r, w: w, s: s, ren: ren, decode: dec,
+		r: r, w: w, s: s, ren: ren,
+		decode: dec, multiDecode: mdec,
 	}
 	ren.Template().Funcs(template.FuncMap{
 		"url": state.url,
@@ -60,6 +63,7 @@ func webAuth(
 	s *sessions.Session,
 	ren render.Render,
 	dec formDecoder,
+	mdec multiDecoder,
 ) {
 	userId := sessGet(s, sessionUserId)
 	if len(userId) == 0 {
@@ -67,7 +71,8 @@ func webAuth(
 	}
 	state := &web{
 		lg: lg, c: c, routes: routes, params: params,
-		r: r, w: w, s: s, ren: ren, decode: dec,
+		r: r, w: w, s: s, ren: ren,
+		decode: dec, multiDecode: mdec,
 		user: findUserById(userId),
 	}
 	ren.Template().Funcs(template.FuncMap{

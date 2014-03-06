@@ -84,5 +84,9 @@
 
 
 {{ define "bit_nav" }}
-<a href="{{ .NavItem.Link }}">{{ .NavItem.Name }}</a>
+{{ if .NavItem.Link }}
+  <a href="{{ .NavItem.Link }}">{{ .NavItem.Name }}</a>
+{{ else }}
+  {{ .NavItem.Name }}
+{{ end }}
 {{ end }}

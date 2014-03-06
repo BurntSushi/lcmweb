@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/BurntSushi/ty/fun"
 )
 
 type config struct {
@@ -139,4 +140,10 @@ func newConfig() (conf config) {
 	}
 
 	return
+}
+
+func (c config) Categories() []string {
+	cats := fun.Keys(c.Scores).([]string)
+	sort.Sort(sort.StringSlice(cats))
+	return cats
 }

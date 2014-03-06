@@ -6,7 +6,7 @@ $(document).ready(function() {
     var $upload = $form.find('#Upload');
     var userid = $form.find('input[name=UserId]').val();
 
-    jajaxForm($form, function (r, status, xhr, $form) {
+    jajaxForm($form, function(r, status, xhr, $form) {
         if (!is_success(r)) {
             form_response_error(r);
             return;

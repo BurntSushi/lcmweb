@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	reProjectName = regexp.MustCompile("^[-a-zA-Z0-9_ ]+$")
+	reProjectName = regexp.MustCompile("^[-a-zA-Z0-9 ]+$")
 )
 
 func projects(w *web) {
@@ -54,12 +54,12 @@ func deleteProject(w *web) {
 		show("")
 	} else if w.r.Method == "POST" {
 		var form struct {
-			DisplayName string
+			Display string
 		}
 		w.decode(&form)
-		if form.DisplayName != proj.Display {
+		if form.Display != proj.Display {
 			show(fmt.Sprintf("The name %s does not match the project name.",
-				form.DisplayName))
+				form.Display))
 			return
 		}
 		proj.delete()
@@ -71,19 +71,12 @@ func deleteProject(w *web) {
 
 func addProject(w *web) {
 	var form struct {
-		DisplayName string
+		Display string
 	}
 	w.decode(&form)
 
-	proj := project{
-		Owner:   w.user,
-		Name:    projDisplayToName(form.DisplayName),
-		Display: form.DisplayName,
-		Added:   time.Now().UTC(),
-	}
-	proj.validate()
-	proj.add()
-
+	proj, err := insertProject(w.user, form.Display)
+	assert(err)
 	w.json(htmlEscape(proj.Display))
 }
 
@@ -135,6 +128,27 @@ type project struct {
 	collaborators []*lcmUser
 }
 
+// insertProject will add the details given as a project to the database.
+// An error is returned if the data doesn't validate.
+func insertProject(owner *lcmUser, displayName string) (*project, error) {
+	proj := &project{
+		Owner:   owner,
+		Name:    displayToName(displayName),
+		Display: displayName,
+		Added:   time.Now().UTC(),
+	}
+	if err := proj.validate(); err != nil {
+		return nil, err
+	}
+	csql.Exec(db, `
+		INSERT INTO project 
+			(owner, name, created)
+		VALUES
+			($1, $2, $3)
+		`, proj.Owner.Id, proj.Name, proj.Added)
+	return proj, nil
+}
+
 // getProject finds a project given its primary key in the context of a
 // request. Namely, it makes sure that the viewer has access to the project.
 func getProject(user *lcmUser, projOwner, projName string) *project {
@@ -143,13 +157,14 @@ func getProject(user *lcmUser, projOwner, projName string) *project {
 
 	assert(db.QueryRow(`
 		SELECT
-			name, display, created
+			name, created
 		FROM
 			project
 		WHERE
 			owner = $1 AND name = $2
 	`, owner.Id, projName).
-		Scan(&proj.Name, &proj.Display, &proj.Added))
+		Scan(&proj.Name, &proj.Added))
+	proj.Display = nameToDisplay(proj.Name)
 
 	// If the owner of the project is the current user, then permission
 	// is self evident.
@@ -170,28 +185,18 @@ func getProject(user *lcmUser, projOwner, projName string) *project {
 		user.Id))
 }
 
-// projDisplayToName converts a project display name (seen by the user) to a
+// displayToName converts a project display name (seen by the user) to a
 // project name used for identification purposes. The conversion is to simply
 // replace space characters with underscore characters.
-func projDisplayToName(display string) string {
+func displayToName(display string) string {
 	return strings.Replace(display, " ", "_", -1)
 }
 
-// projNameToDisplay converts a project name to a display name which is seen
+// nameToDisplay converts a project name to a display name which is seen
 // by the user. The conversion is to simply replace underscore characters with
 // space characters.
-func projNameToDisplay(name string) string {
+func nameToDisplay(name string) string {
 	return strings.Replace(name, "_", " ", -1)
-}
-
-// add will add the project to the database.
-func (proj *project) add() {
-	csql.Exec(db, `
-		INSERT INTO project 
-			(owner, name, display, created)
-		VALUES
-			($1, $2, $3, $4)
-	`, proj.Owner.Id, proj.Name, proj.Display, proj.Added)
 }
 
 // delete will delete the project from the database. This includes all
@@ -204,21 +209,22 @@ func (proj *project) delete() {
 }
 
 // validate will check to make sure a new project is valid and can be inserted
-// into the DB.
-func (proj *project) validate() {
+// into the DB. If there is a problem with the project, an error is returned.
+func (proj *project) validate() error {
 	if len(proj.Name) < 1 {
-		panic(ue("Projects names must be at least one character."))
+		return ue("Projects names must be at least one character.")
 	}
 	if len(proj.Name) >= 100 {
-		panic(ue("Project names must be fewer than 100 characters."))
+		return ue("Project names must be fewer than 100 characters.")
 	}
 	if !reProjectName.MatchString(proj.Name) {
-		panic(ue("Project names can only contain letters, numbers, " +
-			"spaces, underscores and dashes."))
+		return ue("Project names can only contain letters, numbers, " +
+			"spaces and dashes.")
 	}
 	if proj.isDuplicate() {
-		panic(ue("A project named **%s** already exists.", proj.Display))
+		return ue("A project named **%s** already exists.", proj.Display)
 	}
+	return nil
 }
 
 // isDuplicate returns true if the project already exists.
@@ -281,17 +287,18 @@ func (user *lcmUser) projects() []*project {
 	projs := make([]*project, 0)
 	rows := csql.Query(db, `
 		SELECT
-			name, display, created
+			name, created
 		FROM
 			project
 		WHERE
 			owner = $1
 		ORDER BY
-			display ASC
+			name ASC
 	`, user.Id)
 	csql.ForRow(rows, func(s csql.RowScanner) {
 		proj := &project{Owner: user}
-		csql.Scan(rows, &proj.Name, &proj.Display, &proj.Added)
+		csql.Scan(rows, &proj.Name, &proj.Added)
+		proj.Display = nameToDisplay(proj.Name)
 		projs = append(projs, proj)
 	})
 	return projs

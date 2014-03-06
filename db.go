@@ -28,7 +28,6 @@ var schemaMigrations = []migration.Migrator{
 			CREATE TABLE project (
 				owner TEXT NOT NULL,
 				name TEXT NOT NULL,
-				display TEXT NOT NULL,
 				created utctime NOT NULL,
 				PRIMARY KEY (owner, name)
 			);

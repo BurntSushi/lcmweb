@@ -1,4 +1,4 @@
-{{ define "documents" }}
+{{ define "document-list" }}
 {{ template "header" . }}
 <h3>Documents for {{ .P.Display }}</h3>
 
@@ -7,3 +7,82 @@
 {{ template "footer" . }}
 {{ end }}
 
+{{ define "document-add" }}
+{{ template "header" . }}
+<h3>Add document to {{ .P.Display }}</h3>
+
+{{ if .Message }}
+  <div id="form_error">
+    <h4>Error!</h4>
+    <div class="form_error_message">{{ .Message }}</div>
+  </div>
+{{ else }}
+  <div id="form_error" class="hide">
+    <h4>Error!</h4>
+    <div class="form_error_message"></div>
+  </div>
+{{ end }}
+
+<form method="post"
+      action="{{ url "document-upload" }}"
+      enctype="multipart/form-data"
+      class="form_document_upload"
+      id="document_upload"
+  >
+  <div class="form_input">
+    <label for="UploadDoc">
+      <strong class="attn">Try uploading a PDF first:</strong>
+    </label>
+    <div>
+      <input type="file" name="UploadDoc" id="UploadDoc" />
+      <p class="small">
+        If that doesn't work well, you can copy and paste your document into
+        the textarea below.
+      </p>
+    </div>
+  </div>
+</form>
+
+<form method="post"
+      action="{{ url "document-add" .P.Owner.Id .P.Name }}"
+      class="form_document"
+      id="form_document"
+  >
+  <div class="form_input">
+    <label for="Content">
+      <strong>Document:</strong>
+      <p class="small">
+        Note that once a document is added, its text content can never change.
+        If you add a document and you do need to change the content, then
+        you'll need to delete the old document and add a new one.
+      </p>
+    </label>
+    <textarea name="Content" id="Content"></textarea>
+  </div>
+  <div class="form_input">
+    <label for="Display"><strong>Document name:</strong></label>
+    <input type="text" id="Display" name="Display" value="" />
+  </div>
+  <div class="form_input">
+    <label for="Recorded"><strong>Date: (YYYY-MM-DD)</strong></label>
+    <input type="text" id="Recorded" name="Recorded" value="" />
+  </div>
+  <div class="form_input">
+    <label for="Categories"><strong>Scoring categories:</strong></label>
+    {{ range $i, $name := .Conf.Categories }}
+      <label for="Categories_{{ $name }}">
+        <input type="checkbox"
+               checked="checked"
+               name="Categories.{{ $i }}"
+               id="Categories_{{ $name }}"
+               value="{{ $name }}"
+          /> {{ $name }}
+      </label>
+    {{ end }}
+  </div>
+
+  <input type="submit" value="Add" />
+</form>
+
+{{ template "footer" . }}
+{{ end }}
