@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/schema"
 	"github.com/gorilla/sessions"
 
-	"github.com/codegangsta/martini"
+	"github.com/go-martini/martini"
 	"github.com/martini-contrib/render"
 )
 

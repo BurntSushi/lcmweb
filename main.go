@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/codegangsta/martini"
+	"github.com/go-martini/martini"
 
 	"github.com/BurntSushi/sqlauth"
 	"github.com/BurntSushi/sqlsess"
