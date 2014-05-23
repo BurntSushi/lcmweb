@@ -7,7 +7,7 @@
   >
 
   <div class="form_input">
-    <label for="Display"><h3>Add a new project:</h3></label>
+    <label for="Display"><strong>Add a new project:</strong></label>
     <input type="text" id="Display" name="Display" value="" />
 
     <input type="submit" value="Add project" />
@@ -24,8 +24,8 @@
 {{ define "projects_delete" }}
 {{ template "header" . }}
 
-<h3>Are you sure you want to delete
-    <strong class="attn">{{ .Project.Display }}</strong>?</h3>
+<h2>Are you sure you want to delete
+    <strong class="attn">{{ .Project.Display }}</strong>?</h2>
 
 {{ if .Message }}
   <p class="error">{{ .Message }}</p>
@@ -33,7 +33,7 @@
 
 <form method="post" action="{{ url "project-delete" .Project.Name }}">
   <div class="form_input">
-    <label for="Display">Please type the name of the project:</label>
+    <label for="Display" class="wide">Please type the name of the project:</label>
     <input type="text" id="Display" name="Display" value="" />
 
     <input type="submit" value="Delete" />

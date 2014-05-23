@@ -20,7 +20,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-  margin: 20px 0 5px 0;
+  margin: 0 0 5px 0;
 }
 
 p {
@@ -75,7 +75,7 @@ input[value="Delete"] {
 #user_content {
   margin: 0 0 0 200px;
   position: relative;
-  top: 40px;
+  top: 60px;
 }
 
 #user_nav {
@@ -236,6 +236,10 @@ ul.project-list {
     width: 210px;
     vertical-align: top;
     margin-right: 15px;
+  }
+
+  .form_input > label.wide:first-child {
+    width: auto;
   }
 
   .form_input div {
