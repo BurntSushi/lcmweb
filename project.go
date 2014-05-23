@@ -155,15 +155,18 @@ func getProject(user *lcmUser, projOwner, projName string) *project {
 	owner := findUserById(projOwner)
 	proj := &project{Owner: owner}
 
-	assert(db.QueryRow(`
+	err := db.QueryRow(`
 		SELECT
 			name, created
 		FROM
 			project
 		WHERE
 			owner = $1 AND name = $2
-	`, owner.Id, projName).
-		Scan(&proj.Name, &proj.Added))
+	`, owner.Id, projName).Scan(&proj.Name, &proj.Added)
+	if err != nil {
+		panic(ue("Could not find any project named **%s** owned by **%s**.",
+			projName, projOwner))
+	}
 	proj.Display = nameToDisplay(proj.Name)
 
 	// If the owner of the project is the current user, then permission
